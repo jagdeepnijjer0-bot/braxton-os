@@ -1,6 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
-import type { ContactStatus, LeadType } from "@/lib/supabase/types";
+import type { ContactStatus, LeadType, Database } from "@/lib/supabase/types";
+
+type ContactInsert = Database["public"]["Tables"]["contacts"]["Insert"];
+
+// Escape ilike special characters to prevent wildcard abuse
+function escapeLike(s: string) {
+  return s.replace(/[%_\\]/g, "\\$&");
+}
+
+// Only allow known writable columns through POST/PATCH
+const ALLOWED_FIELDS: (keyof ContactInsert)[] = [
+  "name", "company", "role", "email", "phone",
+  "lead_type", "source", "status", "notes",
+  "follow_up_date", "last_contacted", "assigned_to",
+];
+
+function sanitize(body: Record<string, unknown>): Partial<ContactInsert> {
+  const out: Partial<ContactInsert> = {};
+  for (const key of ALLOWED_FIELDS) {
+    if (key in body) {
+      // Coerce empty strings to null for nullable fields
+      const val = body[key];
+      (out as Record<string, unknown>)[key] = val === "" ? null : val;
+    }
+  }
+  return out;
+}
 
 export async function GET(req: NextRequest) {
   const supabase = createServerClient();
@@ -17,8 +43,9 @@ export async function GET(req: NextRequest) {
     .order("created_at", { ascending: false });
 
   if (search) {
+    const safe = escapeLike(search);
     query = query.or(
-      `name.ilike.%${search}%,email.ilike.%${search}%,company.ilike.%${search}%,phone.ilike.%${search}%`
+      `name.ilike.%${safe}%,email.ilike.%${safe}%,company.ilike.%${safe}%,phone.ilike.%${safe}%`
     );
   }
   if (status)    query = query.eq("status", status);
@@ -33,27 +60,29 @@ export async function GET(req: NextRequest) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json(data);
+  return NextResponse.json(data ?? []);
 }
 
 export async function POST(req: NextRequest) {
   const supabase = createServerClient();
 
-  let body: Record<string, unknown>;
+  let raw: Record<string, unknown>;
   try {
-    body = await req.json();
+    raw = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { name, ...rest } = body;
-  if (!name || typeof name !== "string" || !name.trim()) {
+  const payload = sanitize(raw);
+
+  if (!payload.name || typeof payload.name !== "string" || !payload.name.trim()) {
     return NextResponse.json({ error: "name is required" }, { status: 400 });
   }
+  payload.name = payload.name.trim();
 
   const { data, error } = await supabase
     .from("contacts")
-    .insert({ name: name.trim(), ...rest })
+    .insert(payload as ContactInsert)
     .select()
     .single();
 

@@ -4,6 +4,23 @@ import type { Database } from "@/lib/supabase/types";
 
 type ContactUpdate = Database["public"]["Tables"]["contacts"]["Update"];
 
+const ALLOWED_FIELDS: (keyof ContactUpdate)[] = [
+  "name", "company", "role", "email", "phone",
+  "lead_type", "source", "status", "notes",
+  "follow_up_date", "last_contacted", "assigned_to",
+];
+
+function sanitize(body: Record<string, unknown>): ContactUpdate {
+  const out: ContactUpdate = {};
+  for (const key of ALLOWED_FIELDS) {
+    if (key in body) {
+      const val = body[key];
+      (out as Record<string, unknown>)[key] = val === "" ? null : val;
+    }
+  }
+  return out;
+}
+
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_req: NextRequest, { params }: Params) {
@@ -27,20 +44,22 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const supabase = createServerClient();
 
-  let body: Record<string, unknown>;
+  let raw: Record<string, unknown>;
   try {
-    body = await req.json();
+    raw = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  // Prevent overwriting immutable fields
-  delete body.id;
-  delete body.created_at;
+  const payload = sanitize(raw);
+
+  if (Object.keys(payload).length === 0) {
+    return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+  }
 
   const { data, error } = await supabase
     .from("contacts")
-    .update(body as ContactUpdate)
+    .update(payload)
     .eq("id", id)
     .select()
     .single();
