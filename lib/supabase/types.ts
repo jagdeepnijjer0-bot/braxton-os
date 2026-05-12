@@ -35,6 +35,12 @@ export type ContactActivityType =
 // Keep the old name as an alias so existing imports don't break
 export type ActivityType = ContactActivityType;
 
+// ── INBOX ─────────────────────────────────────────────────────
+export type InboxPlatform  = "email" | "whatsapp" | "instagram" | "facebook" | "linkedin" | "website_form";
+export type InboxStatus    = "open" | "replied" | "waiting" | "follow_up" | "closed";
+export type InboxPriority  = "low" | "normal" | "high" | "urgent";
+export type MessageDirection = "inbound" | "outbound";
+
 // ── FINANCE ───────────────────────────────────────────────────
 export type TransactionType = "income" | "expense";
 export type PaymentStatus   = "paid" | "pending" | "overdue" | "cancelled";
@@ -352,6 +358,82 @@ export interface Database {
           notes?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["project_costs"]["Insert"]>;
+      } & NoRelationships;
+
+      // ── inbox_conversations ───────────────────────────────
+      inbox_conversations: {
+        Row: {
+          id: string;
+          created_at: string;
+          updated_at: string;
+          contact_id: string | null;
+          platform: InboxPlatform;
+          subject: string | null;
+          latest_message: string | null;
+          latest_message_at: string | null;
+          status: InboxStatus;
+          assigned_category: string | null;
+          ai_suggested_reply: string | null;
+          next_action: string | null;
+          priority: InboxPriority;
+          assigned_to: string | null;
+          is_read: boolean;
+          contact_name: string | null;
+          contact_email: string | null;
+        };
+        Insert: {
+          platform: InboxPlatform;
+          contact_id?: string | null;
+          subject?: string | null;
+          latest_message?: string | null;
+          latest_message_at?: string | null;
+          status?: InboxStatus;
+          assigned_category?: string | null;
+          ai_suggested_reply?: string | null;
+          next_action?: string | null;
+          priority?: InboxPriority;
+          assigned_to?: string | null;
+          is_read?: boolean;
+          contact_name?: string | null;
+          contact_email?: string | null;
+        };
+        Update: {
+          platform?: InboxPlatform;
+          contact_id?: string | null;
+          subject?: string | null;
+          latest_message?: string | null;
+          latest_message_at?: string | null;
+          status?: InboxStatus;
+          assigned_category?: string | null;
+          ai_suggested_reply?: string | null;
+          next_action?: string | null;
+          priority?: InboxPriority;
+          assigned_to?: string | null;
+          is_read?: boolean;
+          contact_name?: string | null;
+          contact_email?: string | null;
+        };
+      } & NoRelationships;
+
+      // ── inbox_messages ────────────────────────────────────
+      inbox_messages: {
+        Row: {
+          id: string;
+          conversation_id: string;
+          created_at: string;
+          direction: MessageDirection;
+          body: string;
+          sender_name: string | null;
+          is_read: boolean;
+        };
+        Insert: {
+          conversation_id: string;
+          direction?: MessageDirection;
+          body: string;
+          sender_name?: string | null;
+          is_read?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["inbox_messages"]["Insert"]>;
       } & NoRelationships;
 
       // ── finance_transactions ──────────────────────────────
