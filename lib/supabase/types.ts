@@ -35,6 +35,29 @@ export type ContactActivityType =
 // Keep the old name as an alias so existing imports don't break
 export type ActivityType = ContactActivityType;
 
+// ── PROJECTS ──────────────────────────────────────────────────
+export type ProjectStage =
+  | "planning"
+  | "demolition"
+  | "first_fix"
+  | "second_fix"
+  | "decorating"
+  | "snagging"
+  | "completed"
+  | "on_hold";
+
+export type ProjectActivityType =
+  | "note"
+  | "call"
+  | "email"
+  | "meeting"
+  | "stage_change"
+  | "cost_update"
+  | "created"
+  | "photo";
+
+export type CostDirection = "in" | "out";
+
 // ── DEALS ─────────────────────────────────────────────────────
 export type DealStage =
   | "lead_found"
@@ -228,6 +251,101 @@ export interface Database {
           created_by?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["deal_activities"]["Insert"]>;
+      } & NoRelationships;
+
+      // ── projects ───────────────────────────────────────────
+      projects: {
+        Row: {
+          id: string;
+          created_at: string;
+          updated_at: string;
+          project_name: string;
+          linked_deal_id: string | null;
+          contractor_name: string | null;
+          stage: ProjectStage;
+          budget: number | null;
+          amount_spent: number | null;
+          projected_profit: number | null;
+          progress_percentage: number | null;
+          start_date: string | null;
+          target_completion_date: string | null;
+          notes: string | null;
+          assigned_to: string | null;
+        };
+        Insert: {
+          project_name: string;
+          stage?: ProjectStage;
+          linked_deal_id?: string | null;
+          contractor_name?: string | null;
+          budget?: number | null;
+          amount_spent?: number | null;
+          projected_profit?: number | null;
+          progress_percentage?: number | null;
+          start_date?: string | null;
+          target_completion_date?: string | null;
+          notes?: string | null;
+          assigned_to?: string | null;
+        };
+        Update: {
+          project_name?: string;
+          stage?: ProjectStage;
+          linked_deal_id?: string | null;
+          contractor_name?: string | null;
+          budget?: number | null;
+          amount_spent?: number | null;
+          projected_profit?: number | null;
+          progress_percentage?: number | null;
+          start_date?: string | null;
+          target_completion_date?: string | null;
+          notes?: string | null;
+          assigned_to?: string | null;
+        };
+      } & NoRelationships;
+
+      // ── project_activities ────────────────────────────────
+      project_activities: {
+        Row: {
+          id: string;
+          project_id: string;
+          created_at: string;
+          type: ProjectActivityType;
+          body: string;
+          metadata: Json | null;
+          created_by: string | null;
+        };
+        Insert: {
+          project_id: string;
+          type: ProjectActivityType;
+          body: string;
+          metadata?: Json | null;
+          created_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["project_activities"]["Insert"]>;
+      } & NoRelationships;
+
+      // ── project_costs ─────────────────────────────────────
+      project_costs: {
+        Row: {
+          id: string;
+          project_id: string;
+          created_at: string;
+          label: string;
+          amount: number;
+          direction: CostDirection;
+          category: string | null;
+          date: string;
+          notes: string | null;
+        };
+        Insert: {
+          project_id: string;
+          label: string;
+          amount: number;
+          direction?: CostDirection;
+          category?: string | null;
+          date?: string;
+          notes?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["project_costs"]["Insert"]>;
       } & NoRelationships;
 
       // ── outreach_campaigns ─────────────────────────────────
