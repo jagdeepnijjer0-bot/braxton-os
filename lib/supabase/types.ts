@@ -35,6 +35,12 @@ export type ContactActivityType =
 // Keep the old name as an alias so existing imports don't break
 export type ActivityType = ContactActivityType;
 
+// ── FINANCE ───────────────────────────────────────────────────
+export type TransactionType = "income" | "expense";
+export type PaymentStatus   = "paid" | "pending" | "overdue" | "cancelled";
+export type PaymentMethod   = "bank_transfer" | "cash" | "card" | "bacs" | "cheque" | "stripe" | "paypal";
+export type RecurringInterval = "weekly" | "monthly" | "quarterly" | "yearly";
+
 // ── PROJECTS ──────────────────────────────────────────────────
 export type ProjectStage =
   | "planning"
@@ -346,6 +352,64 @@ export interface Database {
           notes?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["project_costs"]["Insert"]>;
+      } & NoRelationships;
+
+      // ── finance_transactions ──────────────────────────────
+      finance_transactions: {
+        Row: {
+          id: string;
+          created_at: string;
+          updated_at: string;
+          transaction_date: string;
+          transaction_type: TransactionType;
+          category: string;
+          item_name: string;
+          amount: number;
+          quantity: number;
+          total_amount: number;
+          payment_method: PaymentMethod | null;
+          payment_status: PaymentStatus;
+          is_recurring: boolean;
+          recurring_interval: RecurringInterval | null;
+          linked_project_id: string | null;
+          linked_deal_id: string | null;
+          linked_contact_id: string | null;
+          notes: string | null;
+        };
+        Insert: {
+          transaction_date?: string;
+          transaction_type: TransactionType;
+          category: string;
+          item_name: string;
+          amount: number;
+          quantity?: number;
+          total_amount: number;
+          payment_method?: PaymentMethod | null;
+          payment_status?: PaymentStatus;
+          is_recurring?: boolean;
+          recurring_interval?: RecurringInterval | null;
+          linked_project_id?: string | null;
+          linked_deal_id?: string | null;
+          linked_contact_id?: string | null;
+          notes?: string | null;
+        };
+        Update: {
+          transaction_date?: string;
+          transaction_type?: TransactionType;
+          category?: string;
+          item_name?: string;
+          amount?: number;
+          quantity?: number;
+          total_amount?: number;
+          payment_method?: PaymentMethod | null;
+          payment_status?: PaymentStatus;
+          is_recurring?: boolean;
+          recurring_interval?: RecurringInterval | null;
+          linked_project_id?: string | null;
+          linked_deal_id?: string | null;
+          linked_contact_id?: string | null;
+          notes?: string | null;
+        };
       } & NoRelationships;
 
       // ── outreach_campaigns ─────────────────────────────────
