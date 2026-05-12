@@ -2,6 +2,7 @@
 
 export type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
 
+// ── CRM ──────────────────────────────────────────────────────
 export type LeadType =
   | "letting_agent"
   | "sourcer"
@@ -22,7 +23,7 @@ export type ContactStatus =
   | "closed_lost"
   | "follow_up";
 
-export type ActivityType =
+export type ContactActivityType =
   | "note"
   | "call"
   | "email"
@@ -31,12 +32,41 @@ export type ActivityType =
   | "follow_up_set"
   | "created";
 
-// Supabase-js v2 requires each table to declare Relationships
+// Keep the old name as an alias so existing imports don't break
+export type ActivityType = ContactActivityType;
+
+// ── DEALS ─────────────────────────────────────────────────────
+export type DealStage =
+  | "lead_found"
+  | "reviewing"
+  | "offer_made"
+  | "under_negotiation"
+  | "investor_interested"
+  | "legals"
+  | "refurb"
+  | "sold_completed"
+  | "dead";
+
+export type InvestorStatus = "none" | "interested" | "confirmed" | "withdrawn";
+export type SolicitorStatus = "not_instructed" | "instructed" | "progressing" | "completed";
+
+export type DealActivityType =
+  | "note"
+  | "call"
+  | "email"
+  | "meeting"
+  | "stage_change"
+  | "offer_made"
+  | "created"
+  | "financial_update";
+
+// ── Supabase-js v2 requirement ────────────────────────────────
 type NoRelationships = { Relationships: [] };
 
 export interface Database {
   public: {
     Tables: {
+      // ── users ──────────────────────────────────────────────
       users: {
         Row: {
           id: string;
@@ -51,6 +81,7 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["users"]["Insert"]>;
       } & NoRelationships;
 
+      // ── contacts ───────────────────────────────────────────
       contacts: {
         Row: {
           id: string;
@@ -99,19 +130,20 @@ export interface Database {
         };
       } & NoRelationships;
 
+      // ── contact_activities ─────────────────────────────────
       contact_activities: {
         Row: {
           id: string;
           contact_id: string;
           created_at: string;
-          type: ActivityType;
+          type: ContactActivityType;
           body: string;
           metadata: Json | null;
           created_by: string | null;
         };
         Insert: {
           contact_id: string;
-          type: ActivityType;
+          type: ContactActivityType;
           body: string;
           metadata?: Json | null;
           created_by?: string | null;
@@ -119,6 +151,86 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["contact_activities"]["Insert"]>;
       } & NoRelationships;
 
+      // ── deals ──────────────────────────────────────────────
+      deals: {
+        Row: {
+          id: string;
+          created_at: string;
+          updated_at: string;
+          deal_name: string;
+          address: string | null;
+          purchase_price: number | null;
+          estimated_value: number | null;
+          monthly_rent: number | null;
+          refurb_cost: number | null;
+          projected_profit: number | null;
+          investor_status: InvestorStatus;
+          solicitor_status: SolicitorStatus;
+          stage: DealStage;
+          notes: string | null;
+          next_action: string | null;
+          target_completion_date: string | null;
+          linked_contact_id: string | null;
+          assigned_to: string | null;
+        };
+        Insert: {
+          deal_name: string;
+          stage?: DealStage;
+          investor_status?: InvestorStatus;
+          solicitor_status?: SolicitorStatus;
+          address?: string | null;
+          purchase_price?: number | null;
+          estimated_value?: number | null;
+          monthly_rent?: number | null;
+          refurb_cost?: number | null;
+          projected_profit?: number | null;
+          notes?: string | null;
+          next_action?: string | null;
+          target_completion_date?: string | null;
+          linked_contact_id?: string | null;
+          assigned_to?: string | null;
+        };
+        Update: {
+          deal_name?: string;
+          stage?: DealStage;
+          investor_status?: InvestorStatus;
+          solicitor_status?: SolicitorStatus;
+          address?: string | null;
+          purchase_price?: number | null;
+          estimated_value?: number | null;
+          monthly_rent?: number | null;
+          refurb_cost?: number | null;
+          projected_profit?: number | null;
+          notes?: string | null;
+          next_action?: string | null;
+          target_completion_date?: string | null;
+          linked_contact_id?: string | null;
+          assigned_to?: string | null;
+        };
+      } & NoRelationships;
+
+      // ── deal_activities ────────────────────────────────────
+      deal_activities: {
+        Row: {
+          id: string;
+          deal_id: string;
+          created_at: string;
+          type: DealActivityType;
+          body: string;
+          metadata: Json | null;
+          created_by: string | null;
+        };
+        Insert: {
+          deal_id: string;
+          type: DealActivityType;
+          body: string;
+          metadata?: Json | null;
+          created_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["deal_activities"]["Insert"]>;
+      } & NoRelationships;
+
+      // ── outreach_campaigns ─────────────────────────────────
       outreach_campaigns: {
         Row: {
           id: string;
