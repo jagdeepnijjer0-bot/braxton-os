@@ -35,6 +35,14 @@ export type ContactActivityType =
 // Keep the old name as an alias so existing imports don't break
 export type ActivityType = ContactActivityType;
 
+// ── TASKS / CALENDAR / NOTIFICATIONS ─────────────────────────
+export type TaskStatus    = "todo" | "in_progress" | "completed" | "overdue" | "cancelled";
+export type TaskPriority  = "low" | "medium" | "high" | "urgent";
+export type TaskType      = "call" | "follow_up" | "meeting" | "refurb" | "finance" | "outreach" | "admin";
+export type EventType     = "meeting" | "reminder" | "deadline" | "milestone" | "refurb" | "finance" | "other";
+export type NotificationType = "task_overdue" | "follow_up_overdue" | "finance_overdue" | "meeting_upcoming" | "project_deadline" | "budget_warning" | "system";
+export type NotificationPriority = "low" | "normal" | "high" | "urgent";
+
 // ── INBOX ─────────────────────────────────────────────────────
 export type InboxPlatform  = "email" | "whatsapp" | "instagram" | "facebook" | "linkedin" | "website_form";
 export type InboxStatus    = "open" | "replied" | "waiting" | "follow_up" | "closed";
@@ -358,6 +366,87 @@ export interface Database {
           notes?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["project_costs"]["Insert"]>;
+      } & NoRelationships;
+
+      // ── tasks ─────────────────────────────────────────────
+      tasks: {
+        Row: {
+          id: string; created_at: string; updated_at: string;
+          title: string; description: string | null;
+          status: TaskStatus; priority: TaskPriority; task_type: TaskType;
+          due_date: string | null; completed_at: string | null;
+          assigned_to: string | null;
+          linked_contact_id: string | null; linked_deal_id: string | null;
+          linked_project_id: string | null; linked_conversation_id: string | null;
+        };
+        Insert: {
+          title: string;
+          description?: string | null; status?: TaskStatus; priority?: TaskPriority;
+          task_type?: TaskType; due_date?: string | null; completed_at?: string | null;
+          assigned_to?: string | null; linked_contact_id?: string | null;
+          linked_deal_id?: string | null; linked_project_id?: string | null;
+          linked_conversation_id?: string | null;
+        };
+        Update: {
+          title?: string; description?: string | null; status?: TaskStatus;
+          priority?: TaskPriority; task_type?: TaskType; due_date?: string | null;
+          completed_at?: string | null; assigned_to?: string | null;
+          linked_contact_id?: string | null; linked_deal_id?: string | null;
+          linked_project_id?: string | null; linked_conversation_id?: string | null;
+        };
+      } & NoRelationships;
+
+      // ── calendar_events ────────────────────────────────────
+      calendar_events: {
+        Row: {
+          id: string; created_at: string; updated_at: string;
+          title: string; description: string | null;
+          event_type: EventType; start_datetime: string;
+          end_datetime: string | null; all_day: boolean; color: string | null;
+          linked_task_id: string | null; linked_deal_id: string | null;
+          linked_project_id: string | null; linked_contact_id: string | null;
+          google_event_id: string | null;
+        };
+        Insert: {
+          title: string; start_datetime: string;
+          description?: string | null; event_type?: EventType;
+          end_datetime?: string | null; all_day?: boolean; color?: string | null;
+          linked_task_id?: string | null; linked_deal_id?: string | null;
+          linked_project_id?: string | null; linked_contact_id?: string | null;
+          google_event_id?: string | null;
+        };
+        Update: {
+          title?: string; start_datetime?: string; description?: string | null;
+          event_type?: EventType; end_datetime?: string | null;
+          all_day?: boolean; color?: string | null;
+          linked_task_id?: string | null; linked_deal_id?: string | null;
+          linked_project_id?: string | null; linked_contact_id?: string | null;
+          google_event_id?: string | null;
+        };
+      } & NoRelationships;
+
+      // ── notifications ──────────────────────────────────────
+      notifications: {
+        Row: {
+          id: string; created_at: string; title: string; body: string | null;
+          type: NotificationType; priority: NotificationPriority;
+          is_read: boolean; link_url: string | null;
+          linked_entity_type: string | null; linked_entity_id: string | null;
+          source_key: string | null;
+        };
+        Insert: {
+          title: string; type: NotificationType;
+          body?: string | null; priority?: NotificationPriority;
+          is_read?: boolean; link_url?: string | null;
+          linked_entity_type?: string | null; linked_entity_id?: string | null;
+          source_key?: string | null;
+        };
+        Update: {
+          title?: string; body?: string | null; type?: NotificationType;
+          priority?: NotificationPriority; is_read?: boolean;
+          link_url?: string | null; linked_entity_type?: string | null;
+          linked_entity_id?: string | null; source_key?: string | null;
+        };
       } & NoRelationships;
 
       // ── inbox_conversations ───────────────────────────────
