@@ -586,20 +586,130 @@ export interface Database {
       // ── outreach_campaigns ─────────────────────────────────
       outreach_campaigns: {
         Row: {
-          id: string;
-          name: string;
-          status: "draft" | "active" | "paused" | "completed";
-          owner_id: string | null;
-          start_date: string | null;
-          end_date: string | null;
-          created_at: string;
-          updated_at: string;
+          id:             string;
+          created_at:     string;
+          updated_at:     string;
+          campaign_name:  string;
+          niche:          OutreachNiche;
+          offer:          string | null;
+          platform:       OutreachPlatform;
+          status:         CampaignStatus;
+          target_count:   number;
+          description:    string | null;
+          notes:          string | null;
+          assigned_user:  string | null;
         };
-        Insert: Omit<
-          Database["public"]["Tables"]["outreach_campaigns"]["Row"],
-          "id" | "created_at" | "updated_at"
-        >;
-        Update: Partial<Database["public"]["Tables"]["outreach_campaigns"]["Insert"]>;
+        Insert: {
+          campaign_name:  string;
+          niche?:         OutreachNiche;
+          offer?:         string | null;
+          platform?:      OutreachPlatform;
+          status?:        CampaignStatus;
+          target_count?:  number;
+          description?:   string | null;
+          notes?:         string | null;
+          assigned_user?: string | null;
+        };
+        Update: {
+          campaign_name?:  string;
+          niche?:          OutreachNiche;
+          offer?:          string | null;
+          platform?:       OutreachPlatform;
+          status?:         CampaignStatus;
+          target_count?:   number;
+          description?:    string | null;
+          notes?:          string | null;
+          assigned_user?:  string | null;
+        };
+      } & NoRelationships;
+
+      // ── outreach_leads ─────────────────────────────────────
+      outreach_leads: {
+        Row: {
+          id:                 string;
+          created_at:         string;
+          updated_at:         string;
+          campaign_id:        string;
+          contact_name:       string;
+          company:            string | null;
+          email:              string | null;
+          phone:              string | null;
+          platform:           OutreachPlatform;
+          lead_source:        string | null;
+          status:             LeadStatus;
+          step:               number;
+          reply_status:       ReplyStatus;
+          booked_call:        boolean;
+          booked_call_at:     string | null;
+          closed_deal:        boolean;
+          closed_at:          string | null;
+          linked_contact_id:  string | null;
+          assigned_user:      string | null;
+          notes:              string | null;
+          next_follow_up:     string | null;
+          last_contacted_at:  string | null;
+        };
+        Insert: {
+          campaign_id:        string;
+          contact_name:       string;
+          company?:           string | null;
+          email?:             string | null;
+          phone?:             string | null;
+          platform?:          OutreachPlatform;
+          lead_source?:       string | null;
+          status?:            LeadStatus;
+          step?:              number;
+          reply_status?:      ReplyStatus;
+          booked_call?:       boolean;
+          closed_deal?:       boolean;
+          linked_contact_id?: string | null;
+          assigned_user?:     string | null;
+          notes?:             string | null;
+          next_follow_up?:    string | null;
+          last_contacted_at?: string | null;
+        };
+        Update: {
+          contact_name?:      string;
+          company?:           string | null;
+          email?:             string | null;
+          phone?:             string | null;
+          platform?:          OutreachPlatform;
+          lead_source?:       string | null;
+          status?:            LeadStatus;
+          step?:              number;
+          reply_status?:      ReplyStatus;
+          booked_call?:       boolean;
+          closed_deal?:       boolean;
+          linked_contact_id?: string | null;
+          assigned_user?:     string | null;
+          notes?:             string | null;
+          next_follow_up?:    string | null;
+          last_contacted_at?: string | null;
+        };
+      } & NoRelationships;
+
+      // ── outreach_activities ────────────────────────────────
+      outreach_activities: {
+        Row: {
+          id:             string;
+          created_at:     string;
+          lead_id:        string;
+          campaign_id:    string;
+          activity_type:  OutreachActivityType;
+          body:           string | null;
+          created_by:     string | null;
+        };
+        Insert: {
+          lead_id:        string;
+          campaign_id:    string;
+          activity_type?: OutreachActivityType;
+          body?:          string | null;
+          created_by?:    string | null;
+        };
+        Update: {
+          body?:          string | null;
+          created_by?:    string | null;
+        };
       } & NoRelationships;
     };
     Views: Record<string, never>;
@@ -607,3 +717,14 @@ export interface Database {
     Enums: Record<string, never>;
   };
 }
+
+export type OutreachNiche =
+  | "letting_agents" | "property_sourcers" | "developers"
+  | "sa_operators" | "estate_agents" | "maintenance"
+  | "ai_automation" | "website_app";
+
+export type OutreachPlatform = "linkedin" | "email" | "whatsapp" | "facebook" | "instagram";
+export type CampaignStatus   = "draft" | "active" | "paused" | "completed" | "archived";
+export type LeadStatus       = "new" | "contacted" | "replied" | "interested" | "not_interested" | "booked" | "closed" | "ghosted" | "unqualified";
+export type ReplyStatus      = "no_reply" | "replied" | "positive" | "negative" | "bounced" | "out_of_office";
+export type OutreachActivityType = "note" | "email_sent" | "dm_sent" | "call" | "reply_received" | "status_change" | "follow_up_set" | "deal_closed" | "call_booked";

@@ -1,199 +1,176 @@
-const campaigns = [
-  {
-    id: 1,
-    name: "Q2 SaaS Decision Makers",
-    status: "Active",
-    sent: 320,
-    opened: 184,
-    replied: 42,
-    meetings: 11,
-    startDate: "Apr 28",
-    endDate: "May 28",
-  },
-  {
-    id: 2,
-    name: "Enterprise Accounts Re-engagement",
-    status: "Active",
-    sent: 95,
-    opened: 61,
-    replied: 18,
-    meetings: 5,
-    startDate: "May 1",
-    endDate: "Jun 1",
-  },
-  {
-    id: 3,
-    name: "Product Launch — Series B Founders",
-    status: "Paused",
-    sent: 210,
-    opened: 130,
-    replied: 27,
-    meetings: 8,
-    startDate: "Mar 15",
-    endDate: "May 15",
-  },
-  {
-    id: 4,
-    name: "Cold Outreach — Healthcare Vertical",
-    status: "Draft",
-    sent: 0,
-    opened: 0,
-    replied: 0,
-    meetings: 0,
-    startDate: "—",
-    endDate: "—",
-  },
-  {
-    id: 5,
-    name: "Competitor Switchers Campaign",
-    status: "Completed",
-    sent: 512,
-    opened: 289,
-    replied: 83,
-    meetings: 24,
-    startDate: "Feb 1",
-    endDate: "Apr 1",
-  },
-];
+"use client";
 
-const sequences = [
-  { id: 1, name: "Initial Outreach", step: 1, type: "Email", delay: "Day 0", status: "Active" },
-  { id: 2, name: "Follow-up #1", step: 2, type: "Email", delay: "Day 3", status: "Active" },
-  { id: 3, name: "LinkedIn Connect", step: 3, type: "LinkedIn", delay: "Day 5", status: "Active" },
-  { id: 4, name: "Follow-up #2", step: 4, type: "Email", delay: "Day 8", status: "Active" },
-  { id: 5, name: "Breakup Email", step: 5, type: "Email", delay: "Day 14", status: "Active" },
-];
+import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { CAMPAIGN_STATUSES, NICHES, PLATFORMS, getCampaignStatus, getNiche, getPlatform } from "@/lib/constants/outreach";
+import type { Database, CampaignStatus, OutreachNiche, OutreachPlatform } from "@/lib/supabase/types";
 
-const statusBadge: Record<string, string> = {
-  Active: "bg-green-100 text-green-700",
-  Paused: "bg-yellow-100 text-yellow-700",
-  Draft: "bg-gray-100 text-gray-500",
-  Completed: "bg-blue-100 text-blue-700",
-};
+type CampaignRow = Database["public"]["Tables"]["outreach_campaigns"]["Row"];
 
-function pct(a: number, b: number) {
-  if (b === 0) return "—";
-  return `${Math.round((a / b) * 100)}%`;
+function Spinner() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <div className="w-5 h-5 border-2 border-gray-200 border-t-indigo-500 rounded-full animate-spin" />
+    </div>
+  );
 }
 
 export default function OutreachPage() {
+  const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
+  const [loading,   setLoading]   = useState(true);
+  const [deleting,  setDeleting]  = useState<string | null>(null);
+  const [search,    setSearch]    = useState("");
+  const [status,    setStatus]    = useState("");
+  const [niche,     setNiche]     = useState("");
+  const [platform,  setPlatform]  = useState("");
+
+  const load = useCallback(async (s: string, st: string, ni: string, pl: string) => {
+    setLoading(true);
+    try {
+      const p = new URLSearchParams();
+      if (s)  p.set("search",   s);
+      if (st) p.set("status",   st);
+      if (ni) p.set("niche",    ni);
+      if (pl) p.set("platform", pl);
+      const res  = await fetch(`/api/outreach/campaigns?${p}`);
+      const data = await res.json();
+      setCampaigns(Array.isArray(data) ? data : []);
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => load(search, status, niche, platform), 250);
+    return () => clearTimeout(t);
+  }, [search, status, niche, platform, load]);
+
+  async function deleteCampaign(id: string, e: React.MouseEvent) {
+    e.preventDefault();
+    if (!confirm("Delete this campaign and all its leads?")) return;
+    setDeleting(id);
+    await fetch(`/api/outreach/campaigns/${id}`, { method: "DELETE" });
+    setCampaigns(prev => prev.filter(c => c.id !== id));
+    setDeleting(null);
+  }
+
+  const hasFilters = search || status || niche || platform;
+  const active     = campaigns.filter(c => c.status === "active").length;
+  const inputCls   = "px-3 py-2 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500";
+
   return (
-    <div className="space-y-6">
-      {/* Summary stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { label: "Emails Sent", value: "1,840" },
-          { label: "Open Rate", value: "56.2%" },
-          { label: "Reply Rate", value: "20.1%" },
-          { label: "Meetings Booked", value: "48" },
-        ].map((s) => (
-          <div key={s.label} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500 font-medium">{s.label}</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{s.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Campaigns table */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900">Campaigns</h2>
-          <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            New Campaign
-          </button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Campaign</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Sent</th>
-                <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Open %</th>
-                <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Reply %</th>
-                <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden lg:table-cell">Meetings</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Duration</th>
-                <th className="px-5 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {campaigns.map((c) => (
-                <tr key={c.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <span className="font-medium text-gray-900">{c.name}</span>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusBadge[c.status]}`}>
-                      {c.status}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5 text-right text-gray-600">{c.sent.toLocaleString()}</td>
-                  <td className="px-5 py-3.5 text-right text-gray-600">{pct(c.opened, c.sent)}</td>
-                  <td className="px-5 py-3.5 text-right text-gray-600">{pct(c.replied, c.sent)}</td>
-                  <td className="px-5 py-3.5 text-right text-gray-600 hidden lg:table-cell">{c.meetings || "—"}</td>
-                  <td className="px-5 py-3.5 text-gray-500 hidden md:table-cell">
-                    {c.startDate !== "—" ? `${c.startDate} → ${c.endDate}` : "—"}
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <button className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Sequence builder preview */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+    <div className="flex flex-col h-[calc(100vh-4rem)]">
+      {/* Header */}
+      <div className="px-5 py-4 border-b border-gray-100 bg-white flex-shrink-0">
+        <div className="flex items-center justify-between gap-4 mb-3">
           <div>
-            <h2 className="font-semibold text-gray-900">Sequence: Q2 SaaS Decision Makers</h2>
-            <p className="text-xs text-gray-500 mt-0.5">5-step email + LinkedIn sequence · 14 days</p>
+            <h1 className="text-xl font-bold text-gray-900">Outreach</h1>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {campaigns.length} campaign{campaigns.length !== 1 ? "s" : ""} · {active} active
+            </p>
           </div>
-          <button className="px-3 py-1.5 text-sm text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors font-medium">
-            Edit Sequence
-          </button>
+          <Link href="/outreach/new"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 active:scale-95 transition-all shadow-sm">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New Campaign
+          </Link>
         </div>
-        <div className="px-5 py-4">
-          <div className="flex flex-col gap-0">
-            {sequences.map((step, i) => (
-              <div key={step.id} className="flex items-start gap-4">
-                {/* Timeline */}
-                <div className="flex flex-col items-center">
-                  <div className="w-8 h-8 rounded-full bg-indigo-100 border-2 border-indigo-500 flex items-center justify-center text-indigo-700 text-xs font-bold flex-shrink-0">
-                    {step.step}
-                  </div>
-                  {i < sequences.length - 1 && (
-                    <div className="w-0.5 h-8 bg-gray-200 mt-1" />
-                  )}
-                </div>
-                {/* Step details */}
-                <div className={`flex-1 pb-6 ${i === sequences.length - 1 ? "pb-0" : ""}`}>
-                  <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{step.name}</p>
-                      <p className="text-xs text-gray-500">{step.type} · Send on {step.delay}</p>
-                    </div>
-                    <div className="ml-auto flex items-center gap-2">
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
-                        {step.status}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+
+        <div className="flex flex-wrap gap-2">
+          <div className="relative flex-1 min-w-40">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search campaigns…"
+              className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
           </div>
+          <select value={status} onChange={e => setStatus(e.target.value)} className={inputCls}>
+            <option value="">All Statuses</option>
+            {CAMPAIGN_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+          <select value={niche} onChange={e => setNiche(e.target.value)} className={inputCls}>
+            <option value="">All Niches</option>
+            {NICHES.map(n => <option key={n.value} value={n.value}>{n.icon} {n.label}</option>)}
+          </select>
+          <select value={platform} onChange={e => setPlatform(e.target.value)} className={inputCls}>
+            <option value="">All Platforms</option>
+            {PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.icon} {p.label}</option>)}
+          </select>
+          {hasFilters && (
+            <button onClick={() => { setSearch(""); setStatus(""); setNiche(""); setPlatform(""); }}
+              className="px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:bg-gray-50">
+              Clear ×
+            </button>
+          )}
         </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-5">
+        {loading ? <Spinner /> : campaigns.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4 text-2xl">📣</div>
+            <h3 className="text-base font-semibold text-gray-700 mb-1">
+              {hasFilters ? "No campaigns match your filters" : "No campaigns yet"}
+            </h3>
+            <p className="text-sm text-gray-400 mb-5">
+              {hasFilters ? "Try clearing your filters." : "Create your first outreach campaign to get started."}
+            </p>
+            {!hasFilters && (
+              <Link href="/outreach/new"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-all">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                New Campaign
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {campaigns.map(c => {
+              const s   = getCampaignStatus(c.status);
+              const n   = getNiche(c.niche);
+              const plt = getPlatform(c.platform);
+              return (
+                <div key={c.id} className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow group">
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <Link href={`/outreach/${c.id}`} className="min-w-0 flex-1">
+                      <p className="font-bold text-gray-900 truncate text-sm hover:text-indigo-700 transition-colors">{c.campaign_name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{n.icon} {n.label}</p>
+                    </Link>
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${s.bg} ${s.color}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+                      {s.label}
+                    </span>
+                  </div>
+
+                  {c.offer && <p className="text-xs text-gray-500 mb-3 line-clamp-2">{c.offer}</p>}
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${plt.bg} ${plt.color}`}>
+                      {plt.icon} {plt.label}
+                    </span>
+                    {c.target_count > 0 && (
+                      <span className="text-[10px] text-gray-400">Target: {c.target_count} leads</span>
+                    )}
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                    <Link href={`/outreach/${c.id}`}
+                      className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors">
+                      View Pipeline →
+                    </Link>
+                    <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Link href={`/outreach/${c.id}/edit`}
+                        className="text-xs text-gray-500 hover:text-gray-700 transition-colors">
+                        Edit
+                      </Link>
+                      <button onClick={e => deleteCampaign(c.id, e)} disabled={deleting === c.id}
+                        className="text-xs text-red-500 hover:text-red-600 disabled:opacity-50 transition-colors">
+                        {deleting === c.id ? "…" : "Delete"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
