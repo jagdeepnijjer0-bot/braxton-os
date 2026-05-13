@@ -103,6 +103,26 @@ export type DealActivityType =
   | "created"
   | "financial_update";
 
+// ── Qualification types (used in Database interface below) ─────
+export type QualLeadType =
+  | "landlord" | "investor" | "developer" | "letting_agent" | "tenant"
+  | "maintenance_inquiry" | "website_app_prospect" | "ai_automation_prospect"
+  | "sourcer" | "sa_operator";
+
+export type QualHeat = "hot" | "warm" | "cold";
+
+export interface QualQuestion {
+  id: string;
+  text: string;
+  type: "select" | "text" | "boolean" | "number";
+  options?: { value: string; label: string; score: number }[];
+  weight?: number;
+}
+
+export interface QualHeatThresholds { hot: number; warm: number; }
+export interface QualReplyTemplates { hot: string; warm: string; cold: string; }
+export interface QualNextActions    { hot: string; warm: string; cold: string; }
+
 // ── Supabase-js v2 requirement ────────────────────────────────
 type NoRelationships = { Relationships: [] };
 
@@ -711,6 +731,83 @@ export interface Database {
           created_by?:    string | null;
         };
       } & NoRelationships;
+
+      // ── qualification_templates ───────────────────────────────
+      qualification_templates: {
+        Row: {
+          id:               string;
+          created_at:       string;
+          lead_type:        string;
+          label:            string;
+          description:      string | null;
+          questions:        QualQuestion[];
+          heat_thresholds:  QualHeatThresholds;
+          reply_templates:  QualReplyTemplates;
+          next_actions:     QualNextActions;
+          crm_fields:       string[];
+          deal_fields:      string[];
+        };
+        Insert: {
+          lead_type:        string;
+          label:            string;
+          description?:     string | null;
+          questions?:       QualQuestion[];
+          heat_thresholds?: QualHeatThresholds;
+          reply_templates?: QualReplyTemplates;
+          next_actions?:    QualNextActions;
+          crm_fields?:      string[];
+          deal_fields?:     string[];
+        };
+        Update: {
+          label?:           string;
+          description?:     string | null;
+          questions?:       QualQuestion[];
+          heat_thresholds?: QualHeatThresholds;
+          reply_templates?: QualReplyTemplates;
+          next_actions?:    QualNextActions;
+          crm_fields?:      string[];
+          deal_fields?:     string[];
+        };
+      } & NoRelationships;
+
+      // ── qualification_sessions ─────────────────────────────────
+      qualification_sessions: {
+        Row: {
+          id:               string;
+          created_at:       string;
+          lead_type:        string;
+          contact_id:       string | null;
+          conversation_id:  string | null;
+          answers:          Record<string, string>;
+          score:            number;
+          heat:             QualHeat;
+          notes:            string | null;
+          suggested_reply:  string | null;
+          next_action:      string | null;
+          created_by:       string | null;
+        };
+        Insert: {
+          lead_type:        string;
+          contact_id?:      string | null;
+          conversation_id?: string | null;
+          answers?:         Record<string, string>;
+          score?:           number;
+          heat?:            QualHeat;
+          notes?:           string | null;
+          suggested_reply?: string | null;
+          next_action?:     string | null;
+          created_by?:      string | null;
+        };
+        Update: {
+          answers?:         Record<string, string>;
+          score?:           number;
+          heat?:            QualHeat;
+          notes?:           string | null;
+          suggested_reply?: string | null;
+          next_action?:     string | null;
+          created_by?:      string | null;
+        };
+      } & NoRelationships;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -728,3 +825,34 @@ export type CampaignStatus   = "draft" | "active" | "paused" | "completed" | "ar
 export type LeadStatus       = "new" | "contacted" | "replied" | "interested" | "not_interested" | "booked" | "closed" | "ghosted" | "unqualified";
 export type ReplyStatus      = "no_reply" | "replied" | "positive" | "negative" | "bounced" | "out_of_office";
 export type OutreachActivityType = "note" | "email_sent" | "dm_sent" | "call" | "reply_received" | "status_change" | "follow_up_set" | "deal_closed" | "call_booked";
+
+// ── Qualification convenience types ───────────────────────────────────────────
+
+export interface QualificationTemplate {
+  id: string;
+  created_at: string;
+  lead_type: QualLeadType;
+  label: string;
+  description: string | null;
+  questions: QualQuestion[];
+  heat_thresholds: QualHeatThresholds;
+  reply_templates: QualReplyTemplates;
+  next_actions: QualNextActions;
+  crm_fields: string[];
+  deal_fields: string[];
+}
+
+export interface QualificationSession {
+  id: string;
+  created_at: string;
+  lead_type: QualLeadType;
+  contact_id: string | null;
+  conversation_id: string | null;
+  answers: Record<string, string>;
+  score: number;
+  heat: QualHeat;
+  notes: string | null;
+  suggested_reply: string | null;
+  next_action: string | null;
+  created_by: string | null;
+}

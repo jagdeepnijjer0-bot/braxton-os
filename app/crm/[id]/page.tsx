@@ -6,6 +6,8 @@ import StatusBadge from "@/app/components/crm/StatusBadge";
 import FollowUpBadge from "@/app/components/crm/FollowUpBadge";
 import ActivityTimeline from "@/app/components/crm/ActivityTimeline";
 import DeleteContactButton from "@/app/components/crm/DeleteContactButton";
+import QualificationPanel from "@/app/components/qualification/QualificationPanel";
+import type { QualLeadType } from "@/lib/supabase/types";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -116,6 +118,13 @@ export default async function ContactDetailPage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      {/* AI Qualification Panel */}
+      <QualificationPanel
+        contactId={id}
+        contactName={contact.name}
+        defaultLeadType={contact.lead_type as QualLeadType | null}
+      />
 
       {/* Body: info + timeline */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
