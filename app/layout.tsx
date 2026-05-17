@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import AppShell from "./components/AppShell";
+import AppShell, { type ShellProfile } from "./components/AppShell";
 import { createServerClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -13,12 +13,16 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   // Fetch the logged-in user's profile to pass to the Sidebar.
   // Returns null on the /login page (unauthenticated) — AppShell hides the sidebar then.
-  let profile = null;
+  let profile: ShellProfile = null;
   try {
     const supabase = await createServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, role")
+        .eq("id", user.id)
+        .single();
       profile = data ?? null;
     }
   } catch {

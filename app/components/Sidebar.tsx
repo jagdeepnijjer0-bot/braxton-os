@@ -4,9 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "./auth/LogoutButton";
 import { getInitials } from "@/lib/utils";
-import type { Database } from "@/lib/supabase/types";
-
-type Profile = Database["public"]["Tables"]["profiles"]["Row"] | null;
+import type { ShellProfile } from "./AppShell";
 
 const navItems = [
   {
@@ -114,7 +112,7 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 interface Props {
-  profile: Profile;
+  profile: ShellProfile;
 }
 
 export default function Sidebar({ profile }: Props) {

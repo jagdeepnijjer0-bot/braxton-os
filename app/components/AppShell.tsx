@@ -3,16 +3,21 @@
 import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
-import type { Database } from "@/lib/supabase/types";
 
-type Profile = Database["public"]["Tables"]["profiles"]["Row"] | null;
+// Inline type — no dependency on lib/supabase/* from this client component.
+export type ShellProfile = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  role: string;
+} | null;
 
 // Pages that should render without the sidebar/topbar shell
 const AUTH_PATHS = ["/login", "/signup"];
 
 interface Props {
   children: React.ReactNode;
-  profile: Profile;
+  profile: ShellProfile;
 }
 
 export default function AppShell({ children, profile }: Props) {
