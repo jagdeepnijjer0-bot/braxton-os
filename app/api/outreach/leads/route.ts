@@ -6,7 +6,7 @@ const VALID_STATUSES: LeadStatus[] = ["new","contacted","replied","interested","
 
 // Cross-campaign lead list (used for follow-up reminders and analytics)
 export async function GET(req: NextRequest) {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { searchParams } = new URL(req.url);
   const status     = searchParams.get("status")      ?? "";
   const followUp   = searchParams.get("follow_up")   === "true";

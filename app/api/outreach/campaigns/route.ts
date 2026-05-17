@@ -7,7 +7,7 @@ const VALID_PLATFORMS: OutreachPlatform[] = ["linkedin","email","whatsapp","face
 const VALID_STATUSES: CampaignStatus[]  = ["draft","active","paused","completed","archived"];
 
 export async function GET(req: NextRequest) {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { searchParams } = new URL(req.url);
   const search   = searchParams.get("search")?.trim() ?? "";
   const status   = searchParams.get("status")   ?? "";
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const b = await req.json();
 
   if (!b.campaign_name?.trim()) return NextResponse.json({ error: "campaign_name is required" }, { status: 400 });

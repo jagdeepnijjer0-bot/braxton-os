@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "./types";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -11,5 +11,5 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-// Browser/client-component singleton — reuse across renders
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+// Cookie-based browser client — session is shared with the server automatically.
+export const supabase = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey);

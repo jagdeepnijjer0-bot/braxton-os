@@ -123,12 +123,86 @@ export interface QualHeatThresholds { hot: number; warm: number; }
 export interface QualReplyTemplates { hot: string; warm: string; cold: string; }
 export interface QualNextActions    { hot: string; warm: string; cold: string; }
 
+// ── Auth / Team types (used in Database interface below) ────────
+export type UserRole = "admin" | "member" | "viewer";
+
 // ── Supabase-js v2 requirement ────────────────────────────────
 type NoRelationships = { Relationships: [] };
 
 export interface Database {
   public: {
     Tables: {
+      // ── profiles ───────────────────────────────────────────────
+      profiles: {
+        Row: {
+          id:         string;
+          created_at: string;
+          email:      string | null;
+          full_name:  string | null;
+          avatar_url: string | null;
+          role:       UserRole;
+          job_title:  string | null;
+          phone:      string | null;
+        };
+        Insert: {
+          id:          string;
+          email?:      string | null;
+          full_name?:  string | null;
+          avatar_url?: string | null;
+          role?:       UserRole;
+          job_title?:  string | null;
+          phone?:      string | null;
+        };
+        Update: {
+          email?:      string | null;
+          full_name?:  string | null;
+          avatar_url?: string | null;
+          role?:       UserRole;
+          job_title?:  string | null;
+          phone?:      string | null;
+        };
+      } & NoRelationships;
+
+      // ── teams ──────────────────────────────────────────────────
+      teams: {
+        Row: {
+          id:         string;
+          created_at: string;
+          name:       string;
+          slug:       string;
+          owner_id:   string | null;
+        };
+        Insert: {
+          name:      string;
+          slug:      string;
+          owner_id?: string | null;
+        };
+        Update: {
+          name?:     string;
+          slug?:     string;
+          owner_id?: string | null;
+        };
+      } & NoRelationships;
+
+      // ── team_members ───────────────────────────────────────────
+      team_members: {
+        Row: {
+          id:        string;
+          team_id:   string;
+          user_id:   string;
+          role:      UserRole;
+          joined_at: string;
+        };
+        Insert: {
+          team_id:  string;
+          user_id:  string;
+          role?:    UserRole;
+        };
+        Update: {
+          role?: UserRole;
+        };
+      } & NoRelationships;
+
       // ── users ──────────────────────────────────────────────
       users: {
         Row: {

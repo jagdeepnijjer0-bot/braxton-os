@@ -5,7 +5,7 @@ interface Props { params: Promise<{ leadType: string }> }
 
 export async function GET(_req: NextRequest, { params }: Props) {
   const { leadType } = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { data, error } = await supabase
     .from("qualification_templates")
     .select("*")

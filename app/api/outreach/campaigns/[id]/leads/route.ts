@@ -10,7 +10,7 @@ const VALID_REPLY: ReplyStatus[]          = ["no_reply","replied","positive","ne
 
 export async function GET(req: NextRequest, { params }: Ctx) {
   const { id } = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status") ?? "";
   const search = searchParams.get("search")?.trim() ?? "";
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
 
 export async function POST(req: NextRequest, { params }: Ctx) {
   const { id: campaign_id } = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const b = await req.json();
 
   if (!b.contact_name?.trim()) return NextResponse.json({ error: "contact_name is required" }, { status: 400 });

@@ -6,7 +6,7 @@ interface Props { params: Promise<{ id: string }> }
 
 export async function GET(_req: NextRequest, { params }: Props) {
   const { id } = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { data, error } = await supabase.from("qualification_sessions").select("*").eq("id", id).single();
   if (error) return NextResponse.json({ error: error.message }, { status: 404 });
   return NextResponse.json(data);
@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, { params }: Props) {
 export async function PATCH(req: NextRequest, { params }: Props) {
   const { id } = await params;
   const b = await req.json();
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
 
   const update: {
     answers?:         Record<string, string>;
@@ -39,7 +39,7 @@ export async function PATCH(req: NextRequest, { params }: Props) {
 
 export async function DELETE(_req: NextRequest, { params }: Props) {
   const { id } = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { error } = await supabase.from("qualification_sessions").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return new NextResponse(null, { status: 204 });

@@ -38,7 +38,7 @@ function fmt(iso: string | null) {
 
 export default async function ContactDetailPage({ params }: Props) {
   const { id } = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
 
   const [{ data: contact }, { data: activities }] = await Promise.all([
     supabase.from("contacts").select("*").eq("id", id).single(),

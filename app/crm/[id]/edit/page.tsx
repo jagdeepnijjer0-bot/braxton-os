@@ -7,7 +7,7 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function EditContactPage({ params }: Props) {
   const { id } = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
 
   const { data: contact } = await supabase
     .from("contacts")

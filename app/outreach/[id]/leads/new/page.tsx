@@ -7,7 +7,7 @@ interface Props { params: Promise<{ id: string }>; searchParams: Promise<{ statu
 
 export default async function NewLeadPage({ params }: Props) {
   const { id }   = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { data: campaign, error } = await supabase.from("outreach_campaigns").select("campaign_name").eq("id", id).single();
   if (error || !campaign) notFound();
 

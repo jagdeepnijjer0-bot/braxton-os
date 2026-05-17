@@ -20,7 +20,7 @@ interface Ctx { params: Promise<{ id: string }> }
 
 export async function GET(_req: NextRequest, { params }: Ctx) {
   const { id } = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { data, error } = await supabase.from("inbox_conversations").select("*").eq("id", id).single();
   if (error) return NextResponse.json({ error: error.message }, { status: error.code === "PGRST116" ? 404 : 500 });
   return NextResponse.json(data);
@@ -28,7 +28,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   const { id } = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const body = await req.json();
   const payload = sanitize(body);
   if (Object.keys(payload).length === 0) return NextResponse.json({ error: "No valid fields" }, { status: 400 });
@@ -51,7 +51,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
   const { id } = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { error } = await supabase.from("inbox_conversations").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

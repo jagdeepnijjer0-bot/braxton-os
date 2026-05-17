@@ -3,7 +3,7 @@ import { createServerClient } from "@/lib/supabase/server";
 
 // Auto-generates notifications from DB state then returns all unread
 export async function GET(_req: NextRequest) {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const today = new Date().toISOString().split("T")[0];
 
   // ── Auto-generate: overdue tasks ──────────────────────────────

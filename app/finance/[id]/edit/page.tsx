@@ -7,7 +7,7 @@ interface Props { params: Promise<{ id: string }> }
 
 export default async function EditTransactionPage({ params }: Props) {
   const { id } = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
 
   const { data: tx, error } = await supabase
     .from("finance_transactions").select("*").eq("id", id).single();

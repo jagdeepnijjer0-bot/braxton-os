@@ -24,7 +24,7 @@ function sanitize(body: Record<string, unknown>): Partial<DealInsert> {
 }
 
 export async function GET(req: NextRequest) {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { searchParams } = new URL(req.url);
 
   const search = searchParams.get("search")?.trim() ?? "";
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
 
   let raw: Record<string, unknown>;
   try { raw = await req.json(); }

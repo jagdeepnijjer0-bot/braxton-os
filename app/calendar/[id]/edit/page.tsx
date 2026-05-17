@@ -7,7 +7,7 @@ interface Props { params: Promise<{ id: string }> }
 
 export default async function EditEventPage({ params }: Props) {
   const { id }   = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { data: event, error } = await supabase.from("calendar_events").select("*").eq("id", id).single();
   if (error || !event) notFound();
 

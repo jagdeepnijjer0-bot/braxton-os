@@ -5,7 +5,7 @@ interface Ctx { params: Promise<{ id: string }> }
 
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   const { id } = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const body = await req.json();
   const is_read = typeof body.is_read === "boolean" ? body.is_read : true;
   const { data, error } = await supabase
@@ -16,7 +16,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
   const { id } = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { error } = await supabase.from("notifications").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return new NextResponse(null, { status: 204 });

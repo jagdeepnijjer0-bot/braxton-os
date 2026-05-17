@@ -5,7 +5,7 @@ import type { EventType } from "@/lib/supabase/types";
 const VALID_TYPES: EventType[] = ["meeting","reminder","deadline","milestone","refurb","finance","other"];
 
 export async function GET(req: NextRequest) {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { searchParams } = new URL(req.url);
   const from  = searchParams.get("from") ?? "";
   const to    = searchParams.get("to")   ?? "";
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const b = await req.json();
 
   if (!b.title || typeof b.title !== "string" || !b.title.trim())

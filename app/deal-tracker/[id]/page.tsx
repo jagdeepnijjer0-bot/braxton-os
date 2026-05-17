@@ -33,7 +33,7 @@ function InfoRow({ label, value }: { label: string; value: string | null | undef
 
 export default async function DealDetailPage({ params }: Props) {
   const { id } = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
 
   const [{ data: deal, error }, { data: activities }] = await Promise.all([
     supabase.from("deals").select("*").eq("id", id).single(),

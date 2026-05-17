@@ -8,7 +8,7 @@ interface Props { params: Promise<{ id: string; leadId: string }> }
 
 export default async function EditLeadPage({ params }: Props) {
   const { id, leadId } = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
 
   const [{ data: lead, error }, { data: campaign }] = await Promise.all([
     supabase.from("outreach_leads").select("*").eq("id", leadId).single(),

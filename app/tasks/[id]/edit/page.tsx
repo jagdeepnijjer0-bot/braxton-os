@@ -7,7 +7,7 @@ interface Props { params: Promise<{ id: string }> }
 
 export default async function EditTaskPage({ params }: Props) {
   const { id }   = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { data: task, error } = await supabase.from("tasks").select("*").eq("id", id).single();
   if (error || !task) notFound();
 

@@ -3,7 +3,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { lastNMonths } from "@/lib/constants/finance";
 
 export async function GET(req: NextRequest) {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { searchParams } = new URL(req.url);
   const months = Number(searchParams.get("months") ?? "6");
 

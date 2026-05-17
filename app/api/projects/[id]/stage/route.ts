@@ -11,7 +11,7 @@ interface Ctx { params: Promise<{ id: string }> }
 
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   const { id } = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { stage } = await req.json();
 
   if (!VALID_STAGES.includes(stage)) {

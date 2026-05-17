@@ -7,7 +7,7 @@ interface Props { params: Promise<{ id: string }> }
 
 export default async function EditDealPage({ params }: Props) {
   const { id } = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
 
   const { data: deal, error } = await supabase
     .from("deals")

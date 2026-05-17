@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   const contactId      = searchParams.get("contact_id");
   const conversationId = searchParams.get("conversation_id");
 
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   let q = supabase.from("qualification_sessions").select("*").order("created_at", { ascending: false });
   if (contactId)      q = q.eq("contact_id",      contactId);
   if (conversationId) q = q.eq("conversation_id", conversationId);
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   const b = await req.json();
   if (!b.lead_type) return NextResponse.json({ error: "lead_type required" }, { status: 400 });
 
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const insert: {
     lead_type:       QualLeadType;
     answers:         Record<string, string>;

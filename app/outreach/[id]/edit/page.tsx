@@ -7,7 +7,7 @@ interface Props { params: Promise<{ id: string }> }
 
 export default async function EditCampaignPage({ params }: Props) {
   const { id }   = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { data: campaign, error } = await supabase.from("outreach_campaigns").select("*").eq("id", id).single();
   if (error || !campaign) notFound();
 

@@ -8,7 +8,7 @@ const VALID_TYPES: OutreachActivityType[] = ["note","email_sent","dm_sent","call
 
 export async function GET(_req: NextRequest, { params }: Ctx) {
   const { id } = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { data, error } = await supabase
     .from("outreach_activities").select("*")
     .eq("lead_id", id)
@@ -19,7 +19,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 
 export async function POST(req: NextRequest, { params }: Ctx) {
   const { id: lead_id } = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const b = await req.json();
 
   if (!b.campaign_id) return NextResponse.json({ error: "campaign_id is required" }, { status: 400 });

@@ -3,7 +3,7 @@ import { createServerClient } from "@/lib/supabase/server";
 
 export async function GET() {
   try {
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
 
     // Lightweight query — just checks the connection is live
     const { error } = await supabase.from("users").select("id").limit(1);

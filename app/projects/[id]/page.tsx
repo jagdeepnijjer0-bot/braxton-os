@@ -25,7 +25,7 @@ function StatCard({ label, value, sub, highlight }: { label: string; value: stri
 
 export default async function ProjectDetailPage({ params }: Props) {
   const { id } = await params;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
 
   const [{ data: project, error }, { data: activities }, { data: costs }] = await Promise.all([
     supabase.from("projects").select("*").eq("id", id).single(),
