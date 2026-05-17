@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { dispatchWebhook } from "@/lib/webhooks/dispatcher";
 import type { QualHeat, QualLeadType } from "@/lib/supabase/types";
 
 export async function GET(req: NextRequest) {
@@ -48,5 +49,29 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await supabase.from("qualification_sessions").insert(insert).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Workflow 2: Hot AI-qualified lead → notification + n8n
+  if (data.heat === "hot") {
+    await supabase.from("notifications").insert({
+      title:              `🔥 Hot lead qualified: ${data.lead_type}`,
+      body:               `Score: ${data.score} — ${data.next_action ?? "Review and action immediately."}`,
+      type:               "system",
+      priority:           "urgent",
+      link_url:           data.contact_id ? `/crm/${data.contact_id}` : "/crm",
+      linked_entity_type: "contact",
+      linked_entity_id:   data.contact_id ?? undefined,
+      source_key:         `hot_lead_${data.id}`,
+    });
+
+    await dispatchWebhook("hot_lead", {
+      session_id:  data.id,
+      lead_type:   data.lead_type,
+      score:       data.score,
+      heat:        data.heat,
+      contact_id:  data.contact_id,
+      next_action: data.next_action,
+    });
+  }
+
   return NextResponse.json(data, { status: 201 });
 }

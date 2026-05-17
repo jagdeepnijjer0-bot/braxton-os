@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { dispatchWebhook } from "@/lib/webhooks/dispatcher";
 import type { OutreachPlatform, LeadStatus, ReplyStatus, OutreachActivityType } from "@/lib/supabase/types";
 
 interface Ctx { params: Promise<{ id: string }> }
@@ -79,6 +80,33 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         body: `Follow-up set for ${update.next_follow_up}`,
       });
     }
+  }
+
+  // Workflow 3: Outreach reply → task + n8n webhook
+  if (
+    update.reply_status &&
+    ["replied", "positive"].includes(update.reply_status) &&
+    data
+  ) {
+    // Auto-create follow-up task
+    await supabase.from("tasks").insert({
+      title:             `Follow up with ${data.contact_name}`,
+      description:       `Replied via ${data.platform ?? "outreach"} — reply_status: ${data.reply_status}`,
+      task_type:         "follow_up",
+      status:            "todo",
+      priority:          "high",
+      linked_contact_id: data.linked_contact_id ?? null,
+    });
+
+    await dispatchWebhook("outreach_reply", {
+      lead_id:      id,
+      contact_name: data.contact_name,
+      reply_status: data.reply_status,
+      platform:     data.platform,
+      campaign_id:  data.campaign_id,
+      email:        data.email,
+      contact_id:   data.linked_contact_id,
+    });
   }
 
   return NextResponse.json(data);

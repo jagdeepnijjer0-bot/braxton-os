@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { dispatchWebhook } from "@/lib/webhooks/dispatcher";
 import type { ContactStatus, LeadType, Database } from "@/lib/supabase/types";
 
 type ContactInsert = Database["public"]["Tables"]["contacts"]["Insert"];
@@ -89,5 +90,18 @@ export async function POST(req: NextRequest) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // Workflow 1: New CRM contact → n8n
+  await dispatchWebhook("new_contact", {
+    contact_id: data.id,
+    name:       data.name,
+    email:      data.email,
+    phone:      data.phone,
+    company:    data.company,
+    lead_type:  data.lead_type,
+    source:     data.source,
+    status:     data.status,
+  });
+
   return NextResponse.json(data, { status: 201 });
 }

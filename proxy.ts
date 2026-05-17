@@ -7,10 +7,12 @@ const PUBLIC_PATHS = ["/login", "/signup"];
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Always pass through Next.js internals, static assets and auth API
+  // Always pass through Next.js internals, static assets, auth API, and webhook endpoints
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/webhooks/inbound/") ||
+    pathname.startsWith("/api/webhooks/cron/") ||
     pathname.startsWith("/favicon") ||
     /\.(ico|png|jpg|jpeg|svg|webp|woff2?|ttf|css|js|map)$/.test(pathname)
   ) {
