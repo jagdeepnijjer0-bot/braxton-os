@@ -7,17 +7,18 @@ import type { Database } from "@/lib/supabase/types";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"] | null;
 
+// Pages that should render without the sidebar/topbar shell
+const AUTH_PATHS = ["/login", "/signup"];
+
 interface Props {
   children: React.ReactNode;
   profile: Profile;
 }
 
-// Wraps all pages. On /login, renders children only (no shell).
-// On all other routes, renders Sidebar + TopBar + main content.
 export default function AppShell({ children, profile }: Props) {
   const pathname = usePathname();
 
-  if (pathname === "/login") {
+  if (AUTH_PATHS.some((p) => pathname.startsWith(p))) {
     return <>{children}</>;
   }
 
