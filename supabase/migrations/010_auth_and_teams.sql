@@ -59,9 +59,9 @@ ALTER TABLE profiles     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE teams        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE team_members ENABLE ROW LEVEL SECURITY;
 
--- Any auth user can read all profiles (for team member lists)
 DROP POLICY IF EXISTS "profiles_read"   ON profiles;
 DROP POLICY IF EXISTS "profiles_update" ON profiles;
+DROP POLICY IF EXISTS "profiles_insert" ON profiles;
 CREATE POLICY "profiles_read"   ON profiles FOR SELECT USING (auth.uid() IS NOT NULL);
 CREATE POLICY "profiles_update" ON profiles FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 CREATE POLICY "profiles_insert" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
@@ -71,7 +71,7 @@ DROP POLICY IF EXISTS "team_members_auth" ON team_members;
 CREATE POLICY "teams_auth"        ON teams        FOR ALL USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
 CREATE POLICY "team_members_auth" ON team_members FOR ALL USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
 
--- ── Drop all existing "dev_*" and "allow all *" open policies ─────────────────
+-- ── Drop all existing "dev_*" and "allow all *" open policies (safe) ──────────
 DO $$
 DECLARE pol record;
 BEGIN
@@ -85,7 +85,7 @@ BEGIN
   END LOOP;
 END $$;
 
--- ── Add auth-required policies on all existing data tables ───────────────────
+-- ── Add auth-required policies — only for tables that actually exist ──────────
 DO $$
 DECLARE tbl text;
 BEGIN
@@ -99,36 +99,59 @@ BEGIN
     'outreach_campaigns', 'outreach_leads', 'outreach_activities',
     'qualification_sessions'
   ] LOOP
-    EXECUTE format(
-      'CREATE POLICY "auth_required_%s" ON public.%I FOR ALL '
-      'USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL)',
-      tbl, tbl
-    );
+    -- Only create policy if the table exists in this database
+    IF EXISTS (
+      SELECT 1 FROM pg_tables
+      WHERE schemaname = 'public' AND tablename = tbl
+    ) THEN
+      EXECUTE format(
+        'CREATE POLICY "auth_required_%s" ON public.%I FOR ALL '
+        'USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL)',
+        tbl, tbl
+      );
+    END IF;
   END LOOP;
 END $$;
 
--- qualification_templates: any auth user can read; only admins can write
-DROP POLICY IF EXISTS "auth_required_qualification_templates" ON qualification_templates;
-CREATE POLICY "qual_tpl_read"   ON qualification_templates FOR SELECT USING (auth.uid() IS NOT NULL);
-CREATE POLICY "qual_tpl_write"  ON qualification_templates FOR INSERT WITH CHECK (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-);
-CREATE POLICY "qual_tpl_update" ON qualification_templates FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-) WITH CHECK (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-);
-CREATE POLICY "qual_tpl_delete" ON qualification_templates FOR DELETE USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
-);
+-- ── qualification_templates policies (only if table exists) ───────────────────
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_tables
+    WHERE schemaname = 'public' AND tablename = 'qualification_templates'
+  ) THEN
+    DROP POLICY IF EXISTS "auth_required_qualification_templates" ON qualification_templates;
+    DROP POLICY IF EXISTS "qual_tpl_read"   ON qualification_templates;
+    DROP POLICY IF EXISTS "qual_tpl_write"  ON qualification_templates;
+    DROP POLICY IF EXISTS "qual_tpl_update" ON qualification_templates;
+    DROP POLICY IF EXISTS "qual_tpl_delete" ON qualification_templates;
 
--- ── Add profiles + teams + team_members to the existing types ─────────────────
--- (No SQL needed — types are managed in lib/supabase/types.ts)
+    CREATE POLICY "qual_tpl_read" ON qualification_templates
+      FOR SELECT USING (auth.uid() IS NOT NULL);
+
+    CREATE POLICY "qual_tpl_write" ON qualification_templates
+      FOR INSERT WITH CHECK (
+        EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+      );
+
+    CREATE POLICY "qual_tpl_update" ON qualification_templates
+      FOR UPDATE USING (
+        EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+      ) WITH CHECK (
+        EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+      );
+
+    CREATE POLICY "qual_tpl_delete" ON qualification_templates
+      FOR DELETE USING (
+        EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+      );
+  END IF;
+END $$;
 
 -- ── HOW TO CREATE YOUR FIRST ADMIN USER ──────────────────────────────────────
 -- 1. Go to Supabase Dashboard → Authentication → Users → "Add User"
 -- 2. Enter your email + password
--- 3. After creating, run this SQL (replace the email):
+-- 3. After creating, run this SQL (replace with your email):
 --
 --    UPDATE profiles SET role = 'admin' WHERE email = 'you@example.com';
 --
