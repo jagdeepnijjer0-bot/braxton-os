@@ -1,153 +1,327 @@
-import type { ReactElement } from "react";
+import { createServerClient } from "@/lib/supabase/server";
+import KpiCard from "./components/dashboard/KpiCard";
+import PipelineBar from "./components/dashboard/PipelineBar";
+import FinanceSummary from "./components/dashboard/FinanceSummary";
+import RecentDeals from "./components/dashboard/RecentDeals";
+import ProjectCards from "./components/dashboard/ProjectCards";
+import UpcomingEvents from "./components/dashboard/UpcomingEvents";
+import ActivityFeed, { type ActivityItem } from "./components/dashboard/ActivityFeed";
+import NotificationsList from "./components/dashboard/NotificationsList";
+import DashboardRefresh from "./components/dashboard/DashboardRefresh";
 
-const stats = [
-  { label: "Total Revenue", value: "$124,500", change: "+12.5%", up: true },
-  { label: "Active Deals", value: "38", change: "+4", up: true },
-  { label: "New Contacts", value: "214", change: "+18.2%", up: true },
-  { label: "Emails Sent", value: "1,840", change: "-3.1%", up: false },
-];
+// ─── helpers ────────────────────────────────────────────────────────────────
 
-const recentDeals = [
-  { name: "Acme Corp", stage: "Proposal", value: "$24,000", owner: "Sarah K.", updated: "Today" },
-  { name: "Globex Inc", stage: "Negotiation", value: "$57,500", owner: "Mike R.", updated: "Yesterday" },
-  { name: "Initech", stage: "Closed Won", value: "$12,000", owner: "Tom H.", updated: "May 9" },
-  { name: "Umbrella Ltd", stage: "Discovery", value: "$8,500", owner: "Sarah K.", updated: "May 8" },
-  { name: "Hooli", stage: "Proposal", value: "$31,000", owner: "Jessica L.", updated: "May 7" },
-];
+function fmt(n: number) {
+  if (n >= 1_000_000) return "£" + (n / 1_000_000).toFixed(1) + "m";
+  if (n >= 1_000)     return "£" + (n / 1_000).toFixed(0) + "k";
+  return "£" + n.toLocaleString("en-GB");
+}
 
-const stageBadge: Record<string, string> = {
-  Discovery: "bg-blue-100 text-blue-700",
-  Proposal: "bg-yellow-100 text-yellow-700",
-  Negotiation: "bg-orange-100 text-orange-700",
-  "Closed Won": "bg-green-100 text-green-700",
-  "Closed Lost": "bg-red-100 text-red-700",
-};
+// ─── Page ───────────────────────────────────────────────────────────────────
 
-const recentActivity = [
-  { text: "Sarah K. updated Acme Corp deal", time: "2m ago", type: "deal" },
-  { text: "New contact: David Park from Initech", time: "45m ago", type: "contact" },
-  { text: "Email sequence started for Hooli", time: "1h ago", type: "outreach" },
-  { text: "Mike R. closed Globex Inc — $57,500", time: "3h ago", type: "win" },
-  { text: "3 new replies in inbox", time: "5h ago", type: "inbox" },
-];
+export default async function DashboardPage() {
+  const supabase = await createServerClient();
 
-const activityIcon: Record<string, ReactElement> = {
-  deal: (
-    <div className="w-7 h-7 rounded-full bg-yellow-100 flex items-center justify-center">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
-    </div>
-  ),
-  contact: (
-    <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-    </div>
-  ),
-  outreach: (
-    <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
-    </div>
-  ),
-  win: (
-    <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
-    </div>
-  ),
-  inbox: (
-    <div className="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9333ea" strokeWidth="2"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12" /><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></svg>
-    </div>
-  ),
-};
+  const now              = new Date();
+  const startOfMonth     = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const thirtyDaysAgo    = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const sevenDaysFromNow = new Date(now.getTime() + 7  * 24 * 60 * 60 * 1000).toISOString();
+  const monthLabel       = now.toLocaleString("en-GB", { month: "long", year: "numeric" });
 
-export default function DashboardPage() {
+  // ── Parallel fetches ──────────────────────────────────────────────────────
+  const [
+    contactsTotalRes,
+    contactsNewRes,
+    dealsRes,
+    projectsRes,
+    financeRes,
+    overdueTasksRes,
+    unreadInboxRes,
+    outreachRepliesRes,
+    bookedCallsRes,
+    hotLeadsRes,
+    eventsRes,
+    notifsRes,
+    contactActsRes,
+    dealActsRes,
+  ] = await Promise.all([
+    // Total contacts
+    supabase.from("contacts").select("*", { count: "exact", head: true }),
+    // New contacts/leads last 30 days
+    supabase.from("contacts").select("*", { count: "exact", head: true }).gte("created_at", thirtyDaysAgo),
+    // Active deals (all non-dead)
+    supabase
+      .from("deals")
+      .select("id, deal_name, stage, projected_profit, purchase_price, address")
+      .neq("stage", "dead")
+      .order("created_at", { ascending: false })
+      .limit(50),
+    // Active projects
+    supabase
+      .from("projects")
+      .select("id, project_name, stage, progress_percentage, budget, amount_spent")
+      .neq("stage", "completed")
+      .order("created_at", { ascending: false })
+      .limit(6),
+    // Finance MTD
+    supabase
+      .from("finance_transactions")
+      .select("transaction_type, total_amount")
+      .gte("transaction_date", startOfMonth),
+    // Overdue tasks: todo/in_progress past due_date
+    supabase
+      .from("tasks")
+      .select("*", { count: "exact", head: true })
+      .in("status", ["todo", "in_progress"])
+      .lt("due_date", now.toISOString()),
+    // Unread inbox
+    supabase
+      .from("inbox_conversations")
+      .select("*", { count: "exact", head: true })
+      .eq("is_read", false),
+    // Outreach replies
+    supabase
+      .from("outreach_leads")
+      .select("*", { count: "exact", head: true })
+      .in("reply_status", ["replied", "positive"]),
+    // Booked calls
+    supabase
+      .from("outreach_leads")
+      .select("*", { count: "exact", head: true })
+      .eq("booked_call", true),
+    // Hot AI-qualified leads
+    supabase
+      .from("qualification_sessions")
+      .select("*", { count: "exact", head: true })
+      .eq("heat", "hot"),
+    // Upcoming calendar events (next 7 days)
+    supabase
+      .from("calendar_events")
+      .select("id, title, event_type, start_datetime, end_datetime, all_day")
+      .gte("start_datetime", now.toISOString())
+      .lte("start_datetime", sevenDaysFromNow)
+      .order("start_datetime", { ascending: true })
+      .limit(8),
+    // Unread notifications (most recent first)
+    supabase
+      .from("notifications")
+      .select("id, title, body, type, priority, created_at, is_read, link_url")
+      .eq("is_read", false)
+      .order("created_at", { ascending: false })
+      .limit(6),
+    // Recent contact activities
+    supabase
+      .from("contact_activities")
+      .select("id, created_at, type, body, contact_id")
+      .order("created_at", { ascending: false })
+      .limit(8),
+    // Recent deal activities
+    supabase
+      .from("deal_activities")
+      .select("id, created_at, type, body, deal_id")
+      .order("created_at", { ascending: false })
+      .limit(8),
+  ]);
+
+  // ── Derived KPIs ──────────────────────────────────────────────────────────
+
+  const totalContacts = contactsTotalRes.count ?? 0;
+  const newLeads      = contactsNewRes.count ?? 0;
+
+  const deals         = dealsRes.data ?? [];
+  const activeDeals   = deals.length;
+  const pipelineValue = deals.reduce((s, d) => s + (d.projected_profit ?? 0), 0);
+  const recentDeals   = deals.slice(0, 6);
+
+  // Deal stage breakdown
+  const stageCounts: Record<string, number> = {};
+  const stageValues: Record<string, number> = {};
+  deals.forEach(d => {
+    stageCounts[d.stage] = (stageCounts[d.stage] ?? 0) + 1;
+    stageValues[d.stage] = (stageValues[d.stage] ?? 0) + (d.projected_profit ?? 0);
+  });
+
+  const projects = projectsRes.data ?? [];
+
+  const finTxns  = financeRes.data ?? [];
+  const moneyIn  = finTxns.filter(t => t.transaction_type === "income").reduce((s, t) => s + (t.total_amount ?? 0), 0);
+  const moneyOut = finTxns.filter(t => t.transaction_type === "expense").reduce((s, t) => s + (t.total_amount ?? 0), 0);
+  const netProfit = moneyIn - moneyOut;
+
+  const overdueTasks    = overdueTasksRes.count ?? 0;
+  const unreadInbox     = unreadInboxRes.count ?? 0;
+  const outreachReplies = outreachRepliesRes.count ?? 0;
+  const bookedCalls     = bookedCallsRes.count ?? 0;
+  const hotLeads        = hotLeadsRes.count ?? 0;
+
+  const events       = eventsRes.data ?? [];
+  const notifications = notifsRes.data ?? [];
+  const unreadNotifsCount = notifications.length;
+
+  // ── Combined activity feed ────────────────────────────────────────────────
+  const contactActs: ActivityItem[] = (contactActsRes.data ?? []).map(a => ({
+    id:         a.id,
+    created_at: a.created_at,
+    type:       a.type,
+    body:       a.body,
+    source:     "contact" as const,
+    label:      "CRM",
+    href:       `/crm/${a.contact_id}`,
+  }));
+  const dealActs: ActivityItem[] = (dealActsRes.data ?? []).map(a => ({
+    id:         a.id,
+    created_at: a.created_at,
+    type:       a.type,
+    body:       a.body,
+    source:     "deal" as const,
+    label:      "Deal",
+    href:       `/deal-tracker/${a.deal_id}`,
+  }));
+  const activityFeed = [...contactActs, ...dealActs]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 10);
+
+  // ── KPI cards config ──────────────────────────────────────────────────────
+
+  const kpis = [
+    {
+      label: "Total Contacts",
+      value: totalContacts,
+      sub: "in CRM",
+      color: "indigo" as const,
+      href: "/crm",
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+    },
+    {
+      label: "New Leads",
+      value: newLeads,
+      sub: "last 30 days",
+      color: "sky" as const,
+      href: "/crm",
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>,
+    },
+    {
+      label: "Pipeline Value",
+      value: fmt(pipelineValue),
+      sub: `${activeDeals} active deals`,
+      color: "violet" as const,
+      href: "/deal-tracker",
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+    },
+    {
+      label: "Active Deals",
+      value: activeDeals,
+      sub: "in pipeline",
+      color: "indigo" as const,
+      href: "/deal-tracker",
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>,
+    },
+    {
+      label: "Net Profit",
+      value: fmt(Math.abs(netProfit)),
+      sub: `${monthLabel}`,
+      color: netProfit >= 0 ? "emerald" as const : "rose" as const,
+      href: "/finance",
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>,
+    },
+    {
+      label: "Money In",
+      value: fmt(moneyIn),
+      sub: `${monthLabel}`,
+      color: "emerald" as const,
+      href: "/finance",
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>,
+    },
+    {
+      label: "Money Out",
+      value: fmt(moneyOut),
+      sub: `${monthLabel}`,
+      color: "rose" as const,
+      href: "/finance",
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>,
+    },
+    {
+      label: "Overdue Tasks",
+      value: overdueTasks,
+      sub: overdueTasks === 0 ? "all clear" : "need attention",
+      color: overdueTasks > 0 ? "rose" as const : "emerald" as const,
+      href: "/tasks",
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+    },
+    {
+      label: "Unread Inbox",
+      value: unreadInbox,
+      sub: "conversations",
+      color: unreadInbox > 0 ? "amber" as const : "slate" as const,
+      href: "/inbox",
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>,
+    },
+    {
+      label: "Outreach Replies",
+      value: outreachReplies,
+      sub: "total replied",
+      color: "sky" as const,
+      href: "/outreach",
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+    },
+    {
+      label: "Booked Calls",
+      value: bookedCalls,
+      sub: "from outreach",
+      color: "emerald" as const,
+      href: "/outreach",
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 5.46 5.46l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>,
+    },
+    {
+      label: "Hot AI Leads",
+      value: hotLeads,
+      sub: "qualified",
+      color: "amber" as const,
+      href: "/crm",
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <div key={stat.label} className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-            <p className="text-sm text-gray-500 font-medium">{stat.label}</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
-            <p className={`text-xs font-medium mt-1 ${stat.up ? "text-green-600" : "text-red-500"}`}>
-              {stat.change} vs last month
-            </p>
-          </div>
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          </p>
+        </div>
+        <DashboardRefresh />
+      </div>
+
+      {/* KPI Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+        {kpis.map(k => (
+          <KpiCard key={k.label} {...k} />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Deals */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900">Recent Deals</h2>
-            <a href="/deal-tracker" className="text-xs text-indigo-600 font-medium hover:underline">View all</a>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {recentDeals.map((deal) => (
-              <div key={deal.name} className="px-5 py-3.5 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-700 text-xs font-bold">
-                    {deal.name[0]}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{deal.name}</p>
-                    <p className="text-xs text-gray-400">{deal.owner} · {deal.updated}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${stageBadge[deal.stage] ?? "bg-gray-100 text-gray-600"}`}>
-                    {deal.stage}
-                  </span>
-                  <span className="text-sm font-semibold text-gray-900 w-20 text-right">{deal.value}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Activity Feed */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-900">Recent Activity</h2>
-          </div>
-          <div className="px-5 py-3 space-y-4">
-            {recentActivity.map((item, i) => (
-              <div key={i} className="flex items-start gap-3">
-                {activityIcon[item.type]}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-700 leading-snug">{item.text}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{item.time}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* Pipeline + Finance row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <PipelineBar stageCounts={stageCounts} stageValues={stageValues} total={activeDeals} />
+        <FinanceSummary moneyIn={moneyIn} moneyOut={moneyOut} month={monthLabel} />
       </div>
 
-      {/* Pipeline summary bar */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-        <h2 className="font-semibold text-gray-900 mb-4">Pipeline Health</h2>
-        <div className="flex gap-1 h-4 rounded-full overflow-hidden">
-          <div className="bg-blue-400" style={{ width: "20%" }} title="Discovery" />
-          <div className="bg-yellow-400" style={{ width: "35%" }} title="Proposal" />
-          <div className="bg-orange-400" style={{ width: "25%" }} title="Negotiation" />
-          <div className="bg-green-400" style={{ width: "20%" }} title="Closed Won" />
-        </div>
-        <div className="flex gap-6 mt-3">
-          {[
-            { label: "Discovery", color: "bg-blue-400", pct: "20%" },
-            { label: "Proposal", color: "bg-yellow-400", pct: "35%" },
-            { label: "Negotiation", color: "bg-orange-400", pct: "25%" },
-            { label: "Closed Won", color: "bg-green-400", pct: "20%" },
-          ].map((s) => (
-            <div key={s.label} className="flex items-center gap-1.5">
-              <div className={`w-2.5 h-2.5 rounded-full ${s.color}`} />
-              <span className="text-xs text-gray-500">{s.label}</span>
-              <span className="text-xs font-medium text-gray-700">{s.pct}</span>
-            </div>
-          ))}
-        </div>
+      {/* Deals + Projects row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <RecentDeals deals={recentDeals} />
+        <ProjectCards projects={projects} />
       </div>
+
+      {/* Events + Activity + Notifications row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <UpcomingEvents events={events} />
+        <ActivityFeed items={activityFeed} />
+        <NotificationsList notifications={notifications} unreadCount={unreadNotifsCount} />
+      </div>
+
     </div>
   );
 }
