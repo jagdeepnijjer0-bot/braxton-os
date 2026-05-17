@@ -1,3 +1,4 @@
+import "server-only";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
@@ -36,14 +37,4 @@ export async function requireRole(minRole: RoleLevel): Promise<Profile> {
   if (!profile) redirect("/login");
   if (ROLE_ORDER[profile.role as RoleLevel] < ROLE_ORDER[minRole]) redirect("/");
   return profile;
-}
-
-// Safe initials helper (used in Sidebar + avatars)
-export function getInitials(name: string | null | undefined): string {
-  if (!name) return "?";
-  return name
-    .split(" ")
-    .slice(0, 2)
-    .map((n) => n[0]?.toUpperCase() ?? "")
-    .join("");
 }

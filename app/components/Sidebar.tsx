@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "./auth/LogoutButton";
-import { getInitials } from "@/lib/auth";
+import { getInitials } from "@/lib/utils";
 import type { Database } from "@/lib/supabase/types";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"] | null;

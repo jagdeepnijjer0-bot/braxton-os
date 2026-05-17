@@ -2,7 +2,7 @@
 
 import { useState, useEffect, type ReactElement } from "react";
 import { supabase } from "@/lib/supabase/client";
-import { getInitials } from "@/lib/auth";
+import { getInitials } from "@/lib/utils";
 
 const tabs = ["Profile", "Workspace", "Integrations", "Notifications", "Billing"];
 
