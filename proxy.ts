@@ -4,7 +4,7 @@ import { updateSession } from "@/lib/supabase/middleware";
 // These paths are accessible without being logged in
 const PUBLIC_PATHS = ["/login", "/signup"];
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Always pass through Next.js internals, static assets and auth API
