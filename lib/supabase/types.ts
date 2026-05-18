@@ -591,6 +591,7 @@ export interface Database {
           is_read: boolean;
           contact_name: string | null;
           contact_email: string | null;
+          external_thread_id: string | null;
         };
         Insert: {
           platform: InboxPlatform;
@@ -607,6 +608,7 @@ export interface Database {
           is_read?: boolean;
           contact_name?: string | null;
           contact_email?: string | null;
+          external_thread_id?: string | null;
         };
         Update: {
           platform?: InboxPlatform;
@@ -623,6 +625,7 @@ export interface Database {
           is_read?: boolean;
           contact_name?: string | null;
           contact_email?: string | null;
+          external_thread_id?: string | null;
         };
       } & NoRelationships;
 
@@ -636,6 +639,7 @@ export interface Database {
           body: string;
           sender_name: string | null;
           is_read: boolean;
+          external_message_id: string | null;
         };
         Insert: {
           conversation_id: string;
@@ -643,8 +647,42 @@ export interface Database {
           body: string;
           sender_name?: string | null;
           is_read?: boolean;
+          external_message_id?: string | null;
         };
-        Update: Partial<Database["public"]["Tables"]["inbox_messages"]["Insert"]>;
+        Update: {
+          direction?: MessageDirection;
+          body?: string;
+          sender_name?: string | null;
+          is_read?: boolean;
+          external_message_id?: string | null;
+        };
+      } & NoRelationships;
+
+      // ── meta_integration_settings ─────────────────────────
+      meta_integration_settings: {
+        Row: {
+          id:           string;
+          created_at:   string;
+          updated_at:   string;
+          platform:     "instagram" | "facebook";
+          page_id:      string | null;
+          page_name:    string | null;
+          is_connected: boolean;
+          connected_at: string | null;
+        };
+        Insert: {
+          platform:     "instagram" | "facebook";
+          page_id?:     string | null;
+          page_name?:   string | null;
+          is_connected?: boolean;
+          connected_at?: string | null;
+        };
+        Update: {
+          page_id?:     string | null;
+          page_name?:   string | null;
+          is_connected?: boolean;
+          connected_at?: string | null;
+        };
       } & NoRelationships;
 
       // ── finance_transactions ──────────────────────────────
