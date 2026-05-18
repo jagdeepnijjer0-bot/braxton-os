@@ -206,7 +206,7 @@ function MetaIntegrationSection() {
   const [loading,   setLoading]   = useState(true);
   const [saving,    setSaving]    = useState<string | null>(null);
   const [testing,   setTesting]   = useState(false);
-  const [testResult, setTestResult] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<{ ok: boolean; lines: string[] } | null>(null);
   const [pageIds,   setPageIds]   = useState<Record<string, string>>({});
   const [pageNames, setPageNames] = useState<Record<string, string>>({});
 
@@ -267,19 +267,27 @@ function MetaIntegrationSection() {
       const res = await fetch("/api/meta/test-event", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          scenario,
-          sender_name: "Test User",
-          message: "Hello! I found you on Instagram and I'm interested in your services.",
-        }),
+        body: JSON.stringify({ scenario, message: "Hello! I'm interested in your services." }),
       });
       const json = await res.json();
-      setTestResult(res.ok
-        ? `✓ ${scenario}: processed ${json.result?.processed ?? 0}, skipped ${json.result?.skipped ?? 0}${json.result?.errors?.length ? `, errors: ${json.result.errors.join("; ")}` : ""}`
-        : `✗ Error: ${json.error ?? "Unknown error"}`
-      );
+      const r = json.result;
+      if (res.ok && json.ok) {
+        const lines = [
+          `✓ ${scenario} — processed: ${r?.processed ?? 0}, skipped: ${r?.skipped ?? 0}`,
+          ...(r?.detail ?? []).map((d: string) => `  › ${d}`),
+          ...(r?.errors ?? []).map((e: string) => `  ✗ ${e}`),
+        ];
+        setTestResult({ ok: !r?.errors?.length, lines });
+      } else {
+        const lines = [
+          `✗ ${scenario} failed`,
+          json.error ?? "Unknown error",
+          ...(r?.errors ?? []).map((e: string) => `  ✗ ${e}`),
+        ];
+        setTestResult({ ok: false, lines });
+      }
     } catch (e) {
-      setTestResult(`✗ ${e instanceof Error ? e.message : "Network error"}`);
+      setTestResult({ ok: false, lines: [`✗ Network error: ${e instanceof Error ? e.message : String(e)}`] });
     }
     setTesting(false);
   }
@@ -416,9 +424,11 @@ function MetaIntegrationSection() {
           ))}
         </div>
         {testResult && (
-          <p className={`mt-3 text-sm font-medium ${testResult.startsWith("✓") ? "text-green-600" : "text-red-600"}`}>
-            {testResult}
-          </p>
+          <div className={`mt-3 rounded-lg p-3 text-xs font-mono space-y-0.5 ${testResult.ok ? "bg-green-50 text-green-800 border border-green-200" : "bg-red-50 text-red-800 border border-red-200"}`}>
+            {testResult.lines.map((line, i) => (
+              <div key={i}>{line}</div>
+            ))}
+          </div>
         )}
       </div>
     </div>

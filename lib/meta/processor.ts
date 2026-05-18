@@ -9,8 +9,8 @@ export interface MetaMessagingEntry {
   recipient: { id: string };
   timestamp: number;
   message?: {
-    mid:  string;
-    text: string;
+    mid:      string;
+    text:     string;
     is_echo?: boolean;
   };
 }
@@ -40,12 +40,29 @@ export interface ProcessResult {
   processed: number;
   skipped:   number;
   errors:    string[];
+  detail:    string[];
+}
+
+// ── Helper: assert a Supabase response or throw with the error message ────────
+function assertOk<T>(
+  result: { data: T | null; error: { message: string; code?: string; details?: string } | null },
+  label:  string,
+): T {
+  if (result.error) {
+    const detail = [result.error.message, result.error.details, result.error.code]
+      .filter(Boolean).join(" | ");
+    throw new Error(`${label}: ${detail}`);
+  }
+  if (result.data === null) {
+    throw new Error(`${label}: query returned null (no row returned)`);
+  }
+  return result.data;
 }
 
 // ── Main processor ────────────────────────────────────────────────────────────
 
 export async function processMetaWebhook(payload: MetaWebhookPayload): Promise<ProcessResult> {
-  const result: ProcessResult = { processed: 0, skipped: 0, errors: [] };
+  const result: ProcessResult = { processed: 0, skipped: 0, errors: [], detail: [] };
   const supabase = createAdminClient();
 
   for (const entry of payload.entry) {
@@ -54,12 +71,12 @@ export async function processMetaWebhook(payload: MetaWebhookPayload): Promise<P
       const platform: InboxPlatform = payload.object === "instagram" ? "instagram" : "facebook";
 
       for (const msg of entry.messaging) {
-        // Skip echo events (messages sent by the page itself)
         if (msg.message?.is_echo) { result.skipped++; continue; }
         if (!msg.message?.text)   { result.skipped++; continue; }
 
         try {
-          await processMessageEvent(supabase, platform, entry.id, msg);
+          const info = await processMessageEvent(supabase, platform, entry.id, msg);
+          result.detail.push(info);
           result.processed++;
         } catch (err) {
           result.errors.push(err instanceof Error ? err.message : String(err));
@@ -72,7 +89,8 @@ export async function processMetaWebhook(payload: MetaWebhookPayload): Promise<P
       for (const change of entry.changes) {
         if (change.field !== "leadgen") { result.skipped++; continue; }
         try {
-          await processLeadgenEvent(supabase, entry.id, change.value);
+          const info = await processLeadgenEvent(supabase, entry.id, change.value);
+          result.detail.push(info);
           result.processed++;
         } catch (err) {
           result.errors.push(err instanceof Error ? err.message : String(err));
@@ -88,105 +106,114 @@ export async function processMetaWebhook(payload: MetaWebhookPayload): Promise<P
 
 async function processMessageEvent(
   supabase: ReturnType<typeof createAdminClient>,
-  platform:  InboxPlatform,
-  pageId:    string,
-  msg:       MetaMessagingEntry,
-) {
+  platform: InboxPlatform,
+  pageId:   string,
+  msg:      MetaMessagingEntry,
+): Promise<string> {
   const senderId  = msg.sender.id;
   const messageId = msg.message!.mid;
   const text      = msg.message!.text;
   const ts        = new Date(msg.timestamp).toISOString();
 
-  // Deduplicate: skip if we've already stored this exact message
-  const { data: existing } = await supabase
+  // ── 1. Deduplicate: skip if this exact message is already stored ─────────
+  const dupCheck = await supabase
     .from("inbox_messages")
     .select("id")
     .eq("external_message_id", messageId)
     .maybeSingle();
+  if (dupCheck.error) throw new Error(`Dedup check failed: ${dupCheck.error.message}`);
+  if (dupCheck.data) return `skipped — message ${messageId} already exists`;
 
-  if (existing) return;
+  // ── 2. Find or create CRM contact ────────────────────────────────────────
+  let contactId:   string | null = null;
+  let contactName: string        = platform === "instagram" ? "Instagram User" : "Facebook User";
 
-  // Find or create CRM contact by Meta sender ID
-  // We store the sender ID in the contacts.notes field as a fallback
-  // and will match by a dedicated lookup once real API is wired
-  let contactId: string | null   = null;
-  let contactName: string | null = `${platform === "instagram" ? "Instagram" : "Facebook"} User`;
-
-  const { data: matchedContact } = await supabase
+  const matchResult = await supabase
     .from("contacts")
     .select("id, name")
     .ilike("notes", `%meta_sender_id:${senderId}%`)
     .maybeSingle();
 
-  if (matchedContact) {
-    contactId   = matchedContact.id;
-    contactName = matchedContact.name;
+  if (matchResult.error) throw new Error(`Contact lookup failed: ${matchResult.error.message}`);
+
+  if (matchResult.data) {
+    contactId   = matchResult.data.id;
+    contactName = matchResult.data.name;
   } else {
-    // Create a new CRM contact as a placeholder
-    const { data: newContact } = await supabase
+    // No existing contact — create one
+    const insertResult = await supabase
       .from("contacts")
       .insert({
         name:      contactName,
         source:    platform,
         status:    "new",
-        lead_type: platform === "instagram" ? "website_app_prospect" : "website_app_prospect",
-        notes:     `Auto-created from ${platform} message. meta_sender_id:${senderId} page_id:${pageId}`,
+        lead_type: "website_app_prospect",
+        notes:     `Auto-created from ${platform} message.\nmeta_sender_id:${senderId}\npage_id:${pageId}`,
       })
-      .select("id")
-      .single();
+      .select("id, name");
 
-    if (newContact) contactId = newContact.id;
+    if (insertResult.error) {
+      throw new Error(`Contact insert failed: ${insertResult.error.message} (code: ${insertResult.error.code ?? "none"}, details: ${insertResult.error.details ?? "none"})`);
+    }
+    if (!insertResult.data?.length) {
+      throw new Error("Contact insert returned no rows — check RLS policies and schema constraints");
+    }
+    contactId   = insertResult.data[0].id;
+    contactName = insertResult.data[0].name;
   }
 
-  // Find or create conversation (keyed by external_thread_id = sender ID + platform)
+  // ── 3. Find or create conversation ───────────────────────────────────────
   const externalThreadId = `${platform}:${senderId}`;
 
-  const { data: existingConv } = await supabase
+  const convLookup = await supabase
     .from("inbox_conversations")
     .select("id, status")
     .eq("external_thread_id", externalThreadId)
     .maybeSingle();
 
-  let conversationId: string;
+  if (convLookup.error) throw new Error(`Conversation lookup failed: ${convLookup.error.message}`);
 
-  if (existingConv) {
-    conversationId = existingConv.id;
-    // Update latest message
-    await supabase
+  let conversationId: string;
+  const snippet = text.length > 120 ? text.slice(0, 120) + "…" : text;
+
+  if (convLookup.data) {
+    conversationId = convLookup.data.id;
+    const upd = await supabase
       .from("inbox_conversations")
       .update({
-        latest_message:    text.length > 120 ? text.slice(0, 120) + "…" : text,
+        latest_message:    snippet,
         latest_message_at: ts,
         is_read:           false,
-        status:            existingConv.status === "closed" ? "open" : existingConv.status,
+        status:            convLookup.data.status === "closed" ? "open" : convLookup.data.status,
         contact_id:        contactId,
         contact_name:      contactName,
       })
       .eq("id", conversationId);
+    if (upd.error) throw new Error(`Conversation update failed: ${upd.error.message}`);
   } else {
-    const { data: newConv } = await supabase
+    const convInsert = await supabase
       .from("inbox_conversations")
       .insert({
         platform,
         contact_id:         contactId,
         contact_name:       contactName,
         subject:            `${platform === "instagram" ? "Instagram" : "Facebook"} message from ${contactName}`,
-        latest_message:     text.length > 120 ? text.slice(0, 120) + "…" : text,
+        latest_message:     snippet,
         latest_message_at:  ts,
         status:             "open",
         priority:           "normal",
         is_read:            false,
         external_thread_id: externalThreadId,
       })
-      .select("id")
-      .single();
+      .select("id");
 
-    if (!newConv) throw new Error("Failed to create inbox conversation");
-    conversationId = newConv.id;
+    if (convInsert.error) throw new Error(`Conversation insert failed: ${convInsert.error.message}`);
+    if (!convInsert.data?.length) throw new Error("Conversation insert returned no rows");
+    conversationId = convInsert.data[0].id;
   }
 
-  // Add message record
-  await supabase
+  // ── 4. Insert message ─────────────────────────────────────────────────────
+  const msgInsert = await supabase
     .from("inbox_messages")
     .insert({
       conversation_id:     conversationId,
@@ -196,70 +223,107 @@ async function processMessageEvent(
       is_read:             false,
       external_message_id: messageId,
     });
+  if (msgInsert.error) throw new Error(`Message insert failed: ${msgInsert.error.message}`);
 
-  // In-app notification
-  await supabase.from("notifications").insert({
+  // ── 5. Notification (best-effort — don't fail the main flow) ─────────────
+  const notifInsert = await supabase.from("notifications").insert({
     title:              `New ${platform === "instagram" ? "Instagram" : "Facebook"} message`,
     body:               `From ${contactName}: ${text.length > 80 ? text.slice(0, 80) + "…" : text}`,
     type:               "system",
     priority:           "high",
     link_url:           `/inbox/${conversationId}`,
     linked_entity_type: "contact",
-    linked_entity_id:   contactId ?? undefined,
+    linked_entity_id:   contactId,
     source_key:         `meta_msg_${messageId}`,
   });
+  // Non-fatal: log but don't throw
+  const notifNote = notifInsert.error ? ` (notification warning: ${notifInsert.error.message})` : "";
+
+  return `${platform} message processed — contact ${contactId}, conversation ${conversationId}${notifNote}`;
 }
 
 // ── Lead form event handler ───────────────────────────────────────────────────
 
 async function processLeadgenEvent(
-  supabase:  ReturnType<typeof createAdminClient>,
-  pageId:    string,
-  value:     MetaLeadgenEntry["value"],
-) {
-  // With real Meta API approval, you'd fetch the lead data using the Graph API:
-  // GET /<leadgen_id>?fields=field_data&access_token=<PAGE_TOKEN>
-  // For MVP: create a placeholder contact and form submission
+  supabase: ReturnType<typeof createAdminClient>,
+  pageId:   string,
+  value:    MetaLeadgenEntry["value"],
+): Promise<string> {
   const leadId = value.leadgen_id;
+  const formId = value.form_id;
 
-  // Deduplicate via source_key in notifications
-  const { data: existingNotif } = await supabase
-    .from("notifications")
+  // ── 1. Deduplicate: check for existing contact with this leadgen_id ───────
+  const dupCheck = await supabase
+    .from("contacts")
     .select("id")
-    .eq("source_key", `meta_lead_${leadId}`)
+    .ilike("notes", `%leadgen_id:${leadId}%`)
     .maybeSingle();
+  if (dupCheck.error) throw new Error(`Lead dedup check failed: ${dupCheck.error.message}`);
+  if (dupCheck.data) return `skipped — lead ${leadId} already processed (contact ${dupCheck.data.id})`;
 
-  if (existingNotif) return;
-
-  const { data: contact } = await supabase
+  // ── 2. Create CRM contact ─────────────────────────────────────────────────
+  const contactInsert = await supabase
     .from("contacts")
     .insert({
-      name:      "Facebook Lead (pending sync)",
+      name:      "Facebook Lead (pending data sync)",
       source:    "facebook",
       status:    "new",
       lead_type: "website_app_prospect",
-      notes:     `Facebook Lead Ad submission. leadgen_id:${leadId} form_id:${value.form_id} page_id:${pageId}. Fetch full lead data once Meta API is approved.`,
+      notes:     `Facebook Lead Ad submission.\nleadgen_id:${leadId}\nform_id:${formId}\npage_id:${pageId}\n\nFetch full lead fields via Meta Graph API once approved.`,
     })
-    .select("id")
-    .single();
+    .select("id");
 
+  if (contactInsert.error) {
+    throw new Error(`Lead contact insert failed: ${contactInsert.error.message} (code: ${contactInsert.error.code ?? "none"}, details: ${contactInsert.error.details ?? "none"})`);
+  }
+  if (!contactInsert.data?.length) {
+    throw new Error("Lead contact insert returned no rows — check RLS and schema constraints");
+  }
+  const contactId = contactInsert.data[0].id;
+
+  // ── 3. Create inbox conversation ──────────────────────────────────────────
+  const convInsert = await supabase
+    .from("inbox_conversations")
+    .insert({
+      platform:           "facebook",
+      contact_id:         contactId,
+      contact_name:       "Facebook Lead (pending data sync)",
+      subject:            `Facebook Lead Ad — form ${formId}`,
+      latest_message:     `Lead Ad submission received. Leadgen ID: ${leadId}. Fetch full data once Meta API is approved.`,
+      latest_message_at:  new Date(value.created_time * 1000).toISOString(),
+      status:             "open",
+      priority:           "high",
+      is_read:            false,
+      external_thread_id: `facebook_lead:${leadId}`,
+    })
+    .select("id");
+
+  const conversationId = !convInsert.error && convInsert.data?.length
+    ? convInsert.data[0].id
+    : null;
+
+  // ── 4. Notification (best-effort) ─────────────────────────────────────────
   await supabase.from("notifications").insert({
     title:              "New Facebook Lead Ad submission",
-    body:               `Lead ID: ${leadId} — fetch full data via Meta Graph API to update contact details.`,
+    body:               `Lead ID: ${leadId} — open the contact to fetch full data via Meta Graph API.`,
     type:               "system",
     priority:           "high",
-    link_url:           contact ? `/crm/${contact.id}` : "/crm",
+    link_url:           `/crm/${contactId}`,
     linked_entity_type: "contact",
-    linked_entity_id:   contact?.id ?? undefined,
+    linked_entity_id:   contactId,
     source_key:         `meta_lead_${leadId}`,
   });
 
+  // ── 5. Follow-up task (best-effort) ───────────────────────────────────────
   await supabase.from("tasks").insert({
     title:             "Review Facebook Lead Ad submission",
-    description:       `New lead from Facebook Lead Ad (form_id: ${value.form_id}). Connect Meta API to auto-sync lead fields.`,
+    description:       `New lead from Facebook Lead Ad.\nForm ID: ${formId}\nLead ID: ${leadId}\n\nOnce Meta API is connected, fetch full lead data.`,
     task_type:         "follow_up",
     status:            "todo",
     priority:          "high",
-    linked_contact_id: contact?.id ?? null,
+    linked_contact_id: contactId,
   });
+
+  const convNote = conversationId ? `, conversation ${conversationId}` : ` (conversation skipped: ${convInsert.error?.message})`;
+  return `Facebook lead processed — contact ${contactId}${convNote}`;
 }
