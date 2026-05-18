@@ -13,7 +13,7 @@ export type ShellProfile = {
 } | null;
 
 // Pages that should render without the sidebar/topbar shell
-const AUTH_PATHS = ["/login", "/signup"];
+const AUTH_PATHS = ["/login", "/signup", "/forms/"];
 
 interface Props {
   children: React.ReactNode;

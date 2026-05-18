@@ -13,6 +13,8 @@ export async function proxy(req: NextRequest) {
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/webhooks/inbound/") ||
     pathname.startsWith("/api/webhooks/cron/") ||
+    pathname.startsWith("/api/forms/submit") ||
+    pathname.startsWith("/forms/") ||
     pathname.startsWith("/favicon") ||
     /\.(ico|png|jpg|jpeg|svg|webp|woff2?|ttf|css|js|map)$/.test(pathname)
   ) {

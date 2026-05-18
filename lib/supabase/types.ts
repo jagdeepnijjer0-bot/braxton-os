@@ -132,6 +132,34 @@ type NoRelationships = { Relationships: [] };
 export interface Database {
   public: {
     Tables: {
+      // ── form_submissions ───────────────────────────────────────
+      form_submissions: {
+        Row: {
+          id:          string;
+          created_at:  string;
+          form_type:   FormType;
+          contact_id:  string | null;
+          data:        Record<string, unknown>;
+          status:      FormStatus;
+          notes:       string | null;
+          assigned_to: string | null;
+        };
+        Insert: {
+          form_type:   FormType;
+          contact_id?: string | null;
+          data?:       Record<string, unknown>;
+          status?:     FormStatus;
+          notes?:      string | null;
+          assigned_to?: string | null;
+        };
+        Update: {
+          status?:     FormStatus;
+          notes?:      string | null;
+          assigned_to?: string | null;
+          contact_id?: string | null;
+        };
+      } & NoRelationships;
+
       // ── profiles ───────────────────────────────────────────────
       profiles: {
         Row: {
@@ -887,6 +915,21 @@ export interface Database {
     Functions: Record<string, never>;
     Enums: Record<string, never>;
   };
+}
+
+// ── Form submissions ──────────────────────────────────────────────────────────
+export type FormType   = "landlord" | "investor" | "maintenance" | "website_app" | "ai_automation";
+export type FormStatus = "new" | "reviewed" | "contacted" | "qualified" | "closed";
+
+export interface FormSubmission {
+  id:          string;
+  created_at:  string;
+  form_type:   FormType;
+  contact_id:  string | null;
+  data:        Record<string, unknown>;
+  status:      FormStatus;
+  notes:       string | null;
+  assigned_to: string | null;
 }
 
 export type OutreachNiche =
