@@ -127,21 +127,24 @@ async function processMessageEvent(
 
   // ── 3. Create contact only for new threads ────────────────────────────────
   if (!existingConv) {
+    const label = platform === "instagram" ? "Instagram" : "Facebook";
     const { data: newContacts, error: contactErr } = await supabase
       .from("contacts")
       .insert({
-        name:      contactName,
-        source:    platform,
-        status:    "new",
-        lead_type: "website_app_prospect",
+        first_name: label,
+        last_name:  "User",
+        status:     "new",
       })
-      .select("id, name");
+      .select("id, first_name, last_name");
 
     if (contactErr) throw new Error(supaErr("Contact insert", contactErr));
     if (!newContacts?.length) throw new Error("Contact insert returned no rows");
 
-    contactId   = newContacts[0].id;
-    contactName = newContacts[0].name;
+    contactId = newContacts[0].id;
+    // Compose display name from whatever the row returned
+    const fn = newContacts[0].first_name ?? label;
+    const ln = newContacts[0].last_name  ?? "User";
+    contactName = `${fn} ${ln}`.trim();
   }
 
   // ── 4. Create or update conversation ─────────────────────────────────────
@@ -236,14 +239,13 @@ async function processLeadgenEvent(
   const { data: newContacts, error: contactErr } = await supabase
     .from("contacts")
     .insert({
-      name:      "Facebook Lead (pending data sync)",
-      source:    "facebook",
-      status:    "new",
-      lead_type: "website_app_prospect",
+      first_name: "Facebook",
+      last_name:  "Lead",
+      status:     "new",
     })
     .select("id");
 
-  if (contactErr)        throw new Error(supaErr("Lead contact insert", contactErr));
+  if (contactErr)           throw new Error(supaErr("Lead contact insert", contactErr));
   if (!newContacts?.length) throw new Error("Lead contact insert returned no rows");
   const contactId = newContacts[0].id;
 
@@ -253,7 +255,7 @@ async function processLeadgenEvent(
     .insert({
       platform:           "facebook",
       contact_id:         contactId,
-      contact_name:       "Facebook Lead (pending data sync)",
+      contact_name:       "Facebook Lead",
       subject:            `Facebook Lead Ad — form ${formId}`,
       latest_message:     `Lead Ad submission received. Leadgen ID: ${leadId}. Connect Meta API to fetch full lead fields.`,
       latest_message_at:  new Date(value.created_time * 1000).toISOString(),

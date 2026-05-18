@@ -249,49 +249,64 @@ export interface Database {
       // ── contacts ───────────────────────────────────────────
       contacts: {
         Row: {
-          id: string;
-          created_at: string;
-          updated_at: string;
-          name: string;
-          company: string | null;
-          role: string | null;
-          email: string | null;
-          phone: string | null;
-          lead_type: LeadType | null;
-          source: string | null;
-          status: ContactStatus;
-          notes: string | null;
+          id:             string;
+          created_at:     string;
+          updated_at:     string;
+          // Legacy single-name field (kept for backwards compat with existing CRM code)
+          name:           string;
+          // Split-name fields (present in newer schema deployments)
+          first_name:     string | null;
+          last_name:      string | null;
+          company:        string | null;
+          company_id:     string | null;
+          role:           string | null;
+          email:          string | null;
+          phone:          string | null;
+          lead_type:      LeadType | null;
+          source:         string | null;
+          status:         ContactStatus;
+          notes:          string | null;
           follow_up_date: string | null;
           last_contacted: string | null;
-          assigned_to: string | null;
+          assigned_to:    string | null;
+          owner_id:       string | null;
         };
         Insert: {
-          name: string;
-          status?: ContactStatus;
-          company?: string | null;
-          role?: string | null;
-          email?: string | null;
-          phone?: string | null;
-          lead_type?: LeadType | null;
-          source?: string | null;
-          notes?: string | null;
+          // Pass name OR first_name/last_name depending on your actual schema
+          name?:          string;
+          first_name?:    string | null;
+          last_name?:     string | null;
+          status?:        ContactStatus;
+          company?:       string | null;
+          company_id?:    string | null;
+          role?:          string | null;
+          email?:         string | null;
+          phone?:         string | null;
+          lead_type?:     LeadType | null;
+          source?:        string | null;
+          notes?:         string | null;
           follow_up_date?: string | null;
           last_contacted?: string | null;
-          assigned_to?: string | null;
+          assigned_to?:   string | null;
+          owner_id?:      string | null;
         };
         Update: {
-          name?: string;
-          status?: ContactStatus;
-          company?: string | null;
-          role?: string | null;
-          email?: string | null;
-          phone?: string | null;
-          lead_type?: LeadType | null;
-          source?: string | null;
-          notes?: string | null;
+          name?:          string;
+          first_name?:    string | null;
+          last_name?:     string | null;
+          status?:        ContactStatus;
+          company?:       string | null;
+          company_id?:    string | null;
+          role?:          string | null;
+          email?:         string | null;
+          phone?:         string | null;
+          lead_type?:     LeadType | null;
+          source?:        string | null;
+          notes?:         string | null;
           follow_up_date?: string | null;
           last_contacted?: string | null;
-          assigned_to?: string | null;
+          assigned_to?:   string | null;
+          owner_id?:      string | null;
         };
       } & NoRelationships;
 
