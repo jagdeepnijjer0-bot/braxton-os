@@ -11,7 +11,18 @@ import type { Database } from "@/lib/supabase/types";
 
 type Contact = Database["public"]["Tables"]["contacts"]["Row"];
 
-function initials(name: string) {
+function displayName(c: Contact): string {
+  if (c.name) return c.name;
+  const full = [c.first_name, c.last_name].filter(Boolean).join(" ").trim();
+  if (full) return full;
+  if (c.company) return c.company;
+  if (c.email)   return c.email;
+  if (c.phone)   return c.phone ?? "";
+  return "Unknown Contact";
+}
+
+function initials(name: string | null | undefined) {
+  if (!name) return "?";
   return name.split(" ").slice(0, 2).map((n) => n[0]?.toUpperCase() ?? "").join("");
 }
 
@@ -35,7 +46,8 @@ const AVATAR_COLORS = [
   "bg-cyan-100 text-cyan-700",
   "bg-pink-100 text-pink-700",
 ];
-function avatarColor(name: string) {
+function avatarColor(name: string | null | undefined) {
+  if (!name) return AVATAR_COLORS[0];
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
@@ -226,11 +238,11 @@ export default function CRMPage() {
                   <div className="grid grid-cols-1 md:grid-cols-[2fr_1.5fr_1.5fr_1.2fr_1.2fr_auto] gap-2 md:gap-4 items-center px-5 py-4">
                     {/* Contact */}
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className={`w-9 h-9 rounded-full text-xs font-bold flex items-center justify-center flex-shrink-0 ${avatarColor(c.name)}`}>
-                        {initials(c.name)}
+                      <div className={`w-9 h-9 rounded-full text-xs font-bold flex items-center justify-center flex-shrink-0 ${avatarColor(displayName(c))}`}>
+                        {initials(displayName(c))}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-indigo-700 transition-colors">{c.name}</p>
+                        <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-indigo-700 transition-colors">{displayName(c)}</p>
                         <p className="text-xs text-gray-400 truncate">
                           {[c.role, c.company].filter(Boolean).join(" · ") || c.email || "—"}
                         </p>
@@ -277,7 +289,7 @@ export default function CRMPage() {
                         </svg>
                       </Link>
                       <button
-                        onClick={() => deleteContact(c.id, c.name)}
+                        onClick={() => deleteContact(c.id, displayName(c))}
                         disabled={deleting === c.id}
                         className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40"
                         title="Delete"
