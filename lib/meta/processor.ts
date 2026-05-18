@@ -133,7 +133,7 @@ async function processMessageEvent(
       .insert({
         first_name: label,
         last_name:  "User",
-        status:     "new",
+        status:     "lead",
       })
       .select("id, first_name, last_name");
 
@@ -241,7 +241,7 @@ async function processLeadgenEvent(
     .insert({
       first_name: "Facebook",
       last_name:  "Lead",
-      status:     "new",
+      status:     "lead",
     })
     .select("id");
 

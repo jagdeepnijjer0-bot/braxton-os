@@ -14,6 +14,7 @@ export type LeadType =
   | "ai_automation_prospect";
 
 export type ContactStatus =
+  | "lead"
   | "new"
   | "contacted"
   | "qualified"
