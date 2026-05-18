@@ -505,6 +505,38 @@ function AiLabSection() {
   const [result,       setResult]     = useState<string | null>(null);
   const [error,        setError]      = useState<string | null>(null);
 
+  // Mock mode state
+  const [mockOn,       setMockOn]     = useState<boolean | null>(null);
+  const [mockReason,   setMockReason] = useState<string>("disabled");
+  const [mockToggling, setMockToggling] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/ai/mock-mode")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) { setMockOn(d.mock); setMockReason(d.reason); } })
+      .catch(() => {});
+  }, []);
+
+  async function toggleMock() {
+    if (mockOn === null) return;
+    // Cannot turn off mock when there's no API key or env override
+    if (!mockOn === false && (mockReason === "no_api_key" || mockReason === "env_override")) return;
+    setMockToggling(true);
+    try {
+      const res = await fetch("/api/ai/mock-mode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: !mockOn }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setMockOn(!mockOn);
+        setMockReason(!mockOn ? "user_toggle" : "disabled");
+      }
+    } catch { /* ignore */ }
+    setMockToggling(false);
+  }
+
   async function run() {
     setRunning(true); setResult(null); setError(null);
     try {
@@ -546,6 +578,41 @@ function AiLabSection() {
           <div>
             <h3 className="font-semibold text-gray-900">AI Lab</h3>
             <p className="text-sm text-gray-500 mt-0.5">Test AI features locally before using them in production.</p>
+          </div>
+        </div>
+
+        {/* Mock mode toggle */}
+        <div className={`rounded-xl border p-4 mb-4 ${mockOn ? "bg-amber-50 border-amber-200" : "bg-gray-50 border-gray-200"}`}>
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-gray-900">Mock Mode</p>
+                {mockOn && (
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                    ⚡ Active
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {mockReason === "no_api_key"    && "Auto-enabled — no ANTHROPIC_API_KEY found. App will never crash."}
+                {mockReason === "env_override"  && "Forced on by AI_MOCK_MODE=true environment variable."}
+                {mockReason === "user_toggle"   && "Enabled by you. All AI outputs are deterministic fake data."}
+                {mockReason === "disabled"      && "Off — real Anthropic API will be called for all AI operations."}
+              </p>
+            </div>
+            <button
+              onClick={toggleMock}
+              disabled={mockToggling || mockOn === null || mockReason === "no_api_key" || mockReason === "env_override"}
+              title={
+                mockReason === "no_api_key"   ? "Cannot disable — no API key configured" :
+                mockReason === "env_override" ? "Cannot disable — set via AI_MOCK_MODE env var" : undefined
+              }
+              className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${
+                mockOn ? "bg-amber-400" : "bg-gray-300"
+              }`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${mockOn ? "translate-x-5" : "translate-x-0"}`} />
+            </button>
           </div>
         </div>
 

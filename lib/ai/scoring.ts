@@ -1,5 +1,7 @@
 import "server-only";
 import { getAnthropicClient, HAIKU } from "./client";
+import { isMockMode } from "./is-mock";
+import { mockScore } from "./mock";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/types";
 
@@ -39,6 +41,8 @@ function buildContactContext(c: ContactRow): string {
 }
 
 export async function scoreContact(contact: ContactRow): Promise<LeadScore> {
+  if (await isMockMode()) return mockScore(contact.id || contact.name || "default");
+
   const ai = getAnthropicClient();
 
   const response = await ai.messages.create({

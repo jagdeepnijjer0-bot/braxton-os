@@ -1,9 +1,18 @@
 import "server-only";
 import { getAnthropicClient, SONNET } from "./client";
+import { isMockMode } from "./is-mock";
+import { mockContactSummary, mockConvSummary, mockFormSummary } from "./mock";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function summarizeContact(contactId: string): Promise<string> {
   const supabase = createAdminClient();
+
+  if (await isMockMode()) {
+    const summary = mockContactSummary(contactId);
+    await supabase.from("contacts").update({ ai_summary: summary }).eq("id", contactId);
+    return summary;
+  }
+
   const ai = getAnthropicClient();
 
   const [{ data: contact }, { data: activities }] = await Promise.all([
@@ -54,6 +63,13 @@ Example output: "Investor looking for BRR deals in Coventry with £250k budget. 
 
 export async function summarizeConversation(conversationId: string): Promise<string> {
   const supabase = createAdminClient();
+
+  if (await isMockMode()) {
+    const summary = mockConvSummary(conversationId);
+    await supabase.from("inbox_conversations").update({ ai_summary: summary }).eq("id", conversationId);
+    return summary;
+  }
+
   const ai = getAnthropicClient();
 
   const [{ data: conv }, { data: messages }] = await Promise.all([
@@ -98,6 +114,13 @@ Example: "High urgency AI automation enquiry from a Coventry developer — reque
 
 export async function summarizeFormSubmission(submissionId: string): Promise<string> {
   const supabase = createAdminClient();
+
+  if (await isMockMode()) {
+    const summary = mockFormSummary(submissionId);
+    await supabase.from("form_submissions").update({ ai_summary: summary }).eq("id", submissionId);
+    return summary;
+  }
+
   const ai = getAnthropicClient();
 
   const { data: sub } = await supabase

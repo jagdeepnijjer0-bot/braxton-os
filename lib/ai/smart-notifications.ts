@@ -1,5 +1,7 @@
 import "server-only";
 import { getAnthropicClient, HAIKU } from "./client";
+import { isMockMode } from "./is-mock";
+import { mockSentiment } from "./mock";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export interface SmartNotifyResult {
@@ -127,6 +129,8 @@ export interface SentimentResult {
 }
 
 export async function detectNegativeSentiment(conversationId: string): Promise<SentimentResult> {
+  if (await isMockMode()) return mockSentiment(conversationId);
+
   const supabase = createAdminClient();
   const ai = getAnthropicClient();
 

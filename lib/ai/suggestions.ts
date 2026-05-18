@@ -1,5 +1,7 @@
 import "server-only";
 import { getAnthropicClient, HAIKU } from "./client";
+import { isMockMode } from "./is-mock";
+import { mockSuggestions } from "./mock";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { TaskType, TaskPriority } from "@/lib/supabase/types";
 
@@ -12,6 +14,8 @@ export interface TaskSuggestion {
 }
 
 export async function suggestTasks(contactId: string): Promise<TaskSuggestion[]> {
+  if (await isMockMode()) return mockSuggestions(contactId);
+
   const supabase = createAdminClient();
   const ai = getAnthropicClient();
 

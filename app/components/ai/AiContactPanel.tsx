@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AiScoreBadge from "./AiScoreBadge";
 
 interface TaskSuggestion {
@@ -12,11 +12,11 @@ interface TaskSuggestion {
 }
 
 interface Props {
-  contactId:     string;
-  initialScore:  number | null;
-  initialLabel:  "hot" | "warm" | "cold" | null;
+  contactId:       string;
+  initialScore:    number | null;
+  initialLabel:    "hot" | "warm" | "cold" | null;
   initialScoredAt?: string | null;
-  initialSummary?: string | null;
+  initialSummary?:  string | null;
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -27,11 +27,11 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 const TASK_ICONS: Record<string, string> = {
-  call:       "📞",
-  follow_up:  "🔔",
-  meeting:    "📅",
-  outreach:   "📤",
-  admin:      "📋",
+  call:      "📞",
+  follow_up: "🔔",
+  meeting:   "📅",
+  outreach:  "📤",
+  admin:     "📋",
 };
 
 export default function AiContactPanel({
@@ -41,25 +41,34 @@ export default function AiContactPanel({
   initialScoredAt,
   initialSummary,
 }: Props) {
-  const [score,      setScore]      = useState<number | null>(initialScore);
-  const [label,      setLabel]      = useState<"hot" | "warm" | "cold" | null>(initialLabel);
-  const [scoredAt,   setScoredAt]   = useState<string | null>(initialScoredAt ?? null);
-  const [reasoning,  setReasoning]  = useState<string | null>(null);
-  const [keyFactors, setKeyFactors] = useState<string[]>([]);
-  const [summary,    setSummary]    = useState<string | null>(initialSummary ?? null);
+  const [score,       setScore]       = useState<number | null>(initialScore);
+  const [label,       setLabel]       = useState<"hot" | "warm" | "cold" | null>(initialLabel);
+  const [scoredAt,    setScoredAt]    = useState<string | null>(initialScoredAt ?? null);
+  const [reasoning,   setReasoning]   = useState<string | null>(null);
+  const [keyFactors,  setKeyFactors]  = useState<string[]>([]);
+  const [summary,     setSummary]     = useState<string | null>(initialSummary ?? null);
   const [suggestions, setSuggestions] = useState<TaskSuggestion[]>([]);
   const [createdTasks, setCreatedTasks] = useState<Set<number>>(new Set());
+  const [isMock,      setIsMock]      = useState<boolean | null>(null);
 
-  const [scoringBusy,   setScoringBusy]   = useState(false);
-  const [summaryBusy,   setSummaryBusy]   = useState(false);
-  const [suggestBusy,   setSuggestBusy]   = useState(false);
-  const [createBusy,    setCreateBusy]    = useState<number | null>(null);
-  const [error,         setError]         = useState<string | null>(null);
+  const [scoringBusy,  setScoringBusy]  = useState(false);
+  const [summaryBusy,  setSummaryBusy]  = useState(false);
+  const [suggestBusy,  setSuggestBusy]  = useState(false);
+  const [createBusy,   setCreateBusy]   = useState<number | null>(null);
+  const [error,        setError]        = useState<string | null>(null);
+
+  // Fetch current mock mode status on mount
+  useEffect(() => {
+    fetch("/api/ai/mock-mode")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setIsMock(d.mock); })
+      .catch(() => {});
+  }, []);
 
   async function runScore() {
     setScoringBusy(true); setError(null);
     try {
-      const res = await fetch(`/api/ai/score/${contactId}`, { method: "POST" });
+      const res  = await fetch(`/api/ai/score/${contactId}`, { method: "POST" });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
       setScore(data.score.score);
@@ -67,16 +76,15 @@ export default function AiContactPanel({
       setScoredAt(new Date().toISOString());
       setReasoning(data.score.reasoning);
       setKeyFactors(data.score.key_factors ?? []);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
+      if (typeof data.mock === "boolean") setIsMock(data.mock);
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     setScoringBusy(false);
   }
 
   async function runSummary() {
     setSummaryBusy(true); setError(null);
     try {
-      const res = await fetch(`/api/ai/summarize`, {
+      const res  = await fetch("/api/ai/summarize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: "contact", id: contactId }),
@@ -84,39 +92,35 @@ export default function AiContactPanel({
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
       setSummary(data.summary);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
+      if (typeof data.mock === "boolean") setIsMock(data.mock);
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     setSummaryBusy(false);
   }
 
   async function runSuggest() {
     setSuggestBusy(true); setError(null); setCreatedTasks(new Set());
     try {
-      const res = await fetch(`/api/ai/suggest/${contactId}`, { method: "POST" });
+      const res  = await fetch(`/api/ai/suggest/${contactId}`, { method: "POST" });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
       setSuggestions(data.suggestions ?? []);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
+      if (typeof data.mock === "boolean") setIsMock(data.mock);
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     setSuggestBusy(false);
   }
 
-  async function createTask(idx: number, suggestion: TaskSuggestion) {
+  async function createTask(idx: number) {
     setCreateBusy(idx); setError(null);
     try {
-      const res = await fetch(`/api/ai/suggest/${contactId}`, {
+      const res  = await fetch(`/api/ai/suggest/${contactId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ create: true, single: suggestion }),
+        body: JSON.stringify({ create: true }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
       setCreatedTasks(prev => new Set([...prev, idx]));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     setCreateBusy(null);
   }
 
@@ -124,10 +128,15 @@ export default function AiContactPanel({
     <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
       {/* Header */}
       <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-base">🤖</span>
           <h3 className="text-sm font-semibold text-gray-700">AI Intelligence</h3>
           {label && <AiScoreBadge score={score} label={label} scoredAt={scoredAt} compact />}
+          {isMock && (
+            <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+              ⚡ Mock Mode
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -207,7 +216,7 @@ export default function AiContactPanel({
                     <p className="text-xs text-indigo-500 mt-0.5 italic">Why: {s.reason}</p>
                   </div>
                   <button
-                    onClick={() => createTask(i, s)}
+                    onClick={() => createTask(i)}
                     disabled={createBusy === i || createdTasks.has(i)}
                     className={`flex-shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
                       createdTasks.has(i)

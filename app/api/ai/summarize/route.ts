@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { summarizeContact, summarizeConversation, summarizeFormSubmission } from "@/lib/ai/summaries";
+import { isMockMode } from "@/lib/ai/is-mock";
 
 /**
  * POST /api/ai/summarize
@@ -20,12 +21,13 @@ export async function POST(req: NextRequest) {
 
   try {
     let summary: string;
-    if (type === "contact")      summary = await summarizeContact(id);
+    if (type === "contact")           summary = await summarizeContact(id);
     else if (type === "conversation") summary = await summarizeConversation(id);
     else if (type === "submission")   summary = await summarizeFormSubmission(id);
     else return NextResponse.json({ error: "type must be contact | conversation | submission" }, { status: 400 });
 
-    return NextResponse.json({ ok: true, type, id, summary });
+    const mock = await isMockMode();
+    return NextResponse.json({ ok: true, mock, type, id, summary });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
