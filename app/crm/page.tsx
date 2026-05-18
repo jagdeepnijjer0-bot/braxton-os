@@ -8,6 +8,7 @@ import LeadTypeBadge from "@/app/components/crm/LeadTypeBadge";
 import StatusBadge from "@/app/components/crm/StatusBadge";
 import FollowUpBadge from "@/app/components/crm/FollowUpBadge";
 import type { Database } from "@/lib/supabase/types";
+import AiScoreBadge from "@/app/components/ai/AiScoreBadge";
 
 type Contact = Database["public"]["Tables"]["contacts"]["Row"];
 
@@ -242,7 +243,12 @@ export default function CRMPage() {
                         {initials(displayName(c))}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-indigo-700 transition-colors">{displayName(c)}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-indigo-700 transition-colors">{displayName(c)}</p>
+                          {c.ai_score_label && (
+                            <AiScoreBadge score={c.ai_score} label={c.ai_score_label} compact />
+                          )}
+                        </div>
                         <p className="text-xs text-gray-400 truncate">
                           {[c.role, c.company].filter(Boolean).join(" · ") || c.email || "—"}
                         </p>

@@ -4,7 +4,7 @@ import { useState, useEffect, type ReactElement } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { getInitials } from "@/lib/utils";
 
-const tabs = ["Profile", "Workspace", "Integrations", "Notifications", "Billing"];
+const tabs = ["Profile", "Workspace", "Integrations", "AI Lab", "Notifications", "Billing"];
 
 // ── Profile Section ───────────────────────────────────────────────────────────
 function ProfileSection() {
@@ -494,6 +494,166 @@ function IntegrationsSection() {
   );
 }
 
+// ── AI Lab Section ────────────────────────────────────────────────────────────
+function AiLabSection() {
+  type Scenario = "score" | "suggest" | "smart_notify" | "sentiment";
+
+  const [scenario,     setScenario]   = useState<Scenario>("score");
+  const [contactId,    setContactId]  = useState("");
+  const [convId,       setConvId]     = useState("");
+  const [running,      setRunning]    = useState(false);
+  const [result,       setResult]     = useState<string | null>(null);
+  const [error,        setError]      = useState<string | null>(null);
+
+  async function run() {
+    setRunning(true); setResult(null); setError(null);
+    try {
+      const body: Record<string, unknown> = { scenario };
+      if (scenario === "suggest")   body.contact_id = contactId;
+      if (scenario === "sentiment") body.conversation_id = convId;
+
+      const res = await fetch("/api/ai/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      setResult(JSON.stringify(data, null, 2));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+    setRunning(false);
+  }
+
+  async function runSmartNotify() {
+    setRunning(true); setResult(null); setError(null);
+    try {
+      const res = await fetch("/api/ai/smart-notify", { method: "POST" });
+      const data = await res.json();
+      setResult(JSON.stringify(data, null, 2));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+    setRunning(false);
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Info card */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+        <div className="flex items-start gap-3 mb-4">
+          <span className="text-2xl">🤖</span>
+          <div>
+            <h3 className="font-semibold text-gray-900">AI Lab</h3>
+            <p className="text-sm text-gray-500 mt-0.5">Test AI features locally before using them in production.</p>
+          </div>
+        </div>
+
+        {/* Provider info */}
+        <div className="bg-violet-50 border border-violet-100 rounded-xl p-4 mb-4">
+          <p className="text-xs font-semibold text-violet-600 uppercase tracking-wider mb-2">AI Provider</p>
+          <div className="space-y-1 text-sm text-violet-900">
+            <p><strong>Provider:</strong> Anthropic Claude (claude.ai)</p>
+            <p><strong>Models:</strong> claude-haiku-4-5 (scoring, suggestions, sentiment) · claude-sonnet-4-6 (summaries)</p>
+            <p><strong>Env var required:</strong> <code className="bg-violet-100 px-1 rounded">ANTHROPIC_API_KEY</code></p>
+            <p><strong>Estimated cost:</strong> ~$0.001–$0.01 per operation. Haiku: $0.80/M tokens. Sonnet: $3/M tokens.</p>
+          </div>
+        </div>
+
+        {/* Scenario selector */}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Scenario</label>
+            <div className="flex flex-wrap gap-2">
+              {([
+                { id: "score",        label: "Score mock lead" },
+                { id: "suggest",      label: "Suggest tasks" },
+                { id: "smart_notify", label: "Smart notification sweep" },
+                { id: "sentiment",    label: "Sentiment detection" },
+              ] as const).map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => setScenario(s.id)}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-all ${
+                    scenario === s.id
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {scenario === "score" && (
+            <p className="text-sm text-gray-500">Uses a mock high-intent investor contact. No DB required.</p>
+          )}
+          {scenario === "suggest" && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Contact ID</label>
+              <input
+                type="text"
+                value={contactId}
+                onChange={e => setContactId(e.target.value)}
+                placeholder="Paste a real contact UUID from CRM"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          )}
+          {scenario === "smart_notify" && (
+            <p className="text-sm text-gray-500">Scans all contacts and tasks for overdue follow-ups, hot leads going cold, and overdue tasks. Creates real notifications.</p>
+          )}
+          {scenario === "sentiment" && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Conversation ID</label>
+              <input
+                type="text"
+                value={convId}
+                onChange={e => setConvId(e.target.value)}
+                placeholder="Paste a real conversation UUID from Inbox"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          )}
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={scenario === "smart_notify" ? runSmartNotify : run}
+              disabled={running}
+              className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            >
+              {running ? "Running…" : "Run Test"}
+            </button>
+            {result && (
+              <button
+                onClick={() => { setResult(null); setError(null); }}
+                className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Result */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-sm font-medium text-red-700 mb-1">Error</p>
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      )}
+      {result && (
+        <div className="bg-gray-900 border border-gray-700 rounded-xl p-4">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Result</p>
+          <pre className="text-xs text-green-400 whitespace-pre-wrap overflow-auto max-h-96 font-mono">{result}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Notifications placeholder ─────────────────────────────────────────────────
 function NotificationsSection() {
   return (
@@ -525,6 +685,7 @@ const sectionComponents: Record<string, ReactElement> = {
   Profile:       <ProfileSection />,
   Workspace:     <WorkspaceSection />,
   Integrations:  <IntegrationsSection />,
+  "AI Lab":      <AiLabSection />,
   Notifications: <NotificationsSection />,
   Billing:       <BillingSection />,
 };

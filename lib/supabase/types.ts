@@ -144,6 +144,7 @@ export interface Database {
           status:      FormStatus;
           notes:       string | null;
           assigned_to: string | null;
+          ai_summary:  string | null;
         };
         Insert: {
           form_type:   FormType;
@@ -152,12 +153,14 @@ export interface Database {
           status?:     FormStatus;
           notes?:      string | null;
           assigned_to?: string | null;
+          ai_summary?:  string | null;
         };
         Update: {
           status?:     FormStatus;
           notes?:      string | null;
           assigned_to?: string | null;
           contact_id?: string | null;
+          ai_summary?:  string | null;
         };
       } & NoRelationships;
 
@@ -271,6 +274,11 @@ export interface Database {
           last_contacted: string | null;
           assigned_to:    string | null;
           owner_id:       string | null;
+          // AI fields (added migration 013)
+          ai_score:       number | null;
+          ai_score_label: "hot" | "warm" | "cold" | null;
+          ai_summary:     string | null;
+          ai_scored_at:   string | null;
         };
         Insert: {
           // Pass name OR first_name/last_name depending on your actual schema
@@ -290,6 +298,10 @@ export interface Database {
           last_contacted?: string | null;
           assigned_to?:   string | null;
           owner_id?:      string | null;
+          ai_score?:       number | null;
+          ai_score_label?: "hot" | "warm" | "cold" | null;
+          ai_summary?:     string | null;
+          ai_scored_at?:   string | null;
         };
         Update: {
           name?:          string;
@@ -308,6 +320,10 @@ export interface Database {
           last_contacted?: string | null;
           assigned_to?:   string | null;
           owner_id?:      string | null;
+          ai_score?:       number | null;
+          ai_score_label?: "hot" | "warm" | "cold" | null;
+          ai_summary?:     string | null;
+          ai_scored_at?:   string | null;
         };
       } & NoRelationships;
 
@@ -601,6 +617,7 @@ export interface Database {
           status: InboxStatus;
           assigned_category: string | null;
           ai_suggested_reply: string | null;
+          ai_summary:         string | null;
           next_action: string | null;
           priority: InboxPriority;
           assigned_to: string | null;
@@ -618,6 +635,7 @@ export interface Database {
           status?: InboxStatus;
           assigned_category?: string | null;
           ai_suggested_reply?: string | null;
+          ai_summary?:         string | null;
           next_action?: string | null;
           priority?: InboxPriority;
           assigned_to?: string | null;
@@ -635,6 +653,7 @@ export interface Database {
           status?: InboxStatus;
           assigned_category?: string | null;
           ai_suggested_reply?: string | null;
+          ai_summary?:         string | null;
           next_action?: string | null;
           priority?: InboxPriority;
           assigned_to?: string | null;
@@ -962,6 +981,34 @@ export interface Database {
           suggested_reply?: string | null;
           next_action?:     string | null;
           created_by?:      string | null;
+        };
+      } & NoRelationships;
+
+      // ── workflow_events ────────────────────────────────────
+      workflow_events: {
+        Row: {
+          id:           string;
+          created_at:   string;
+          event_type:   string;
+          source:       string;
+          entity_type:  string;
+          entity_id:    string;
+          payload:      Record<string, unknown>;
+          processed_at: string | null;
+          result:       Record<string, unknown> | null;
+        };
+        Insert: {
+          event_type:   string;
+          source:       string;
+          entity_type:  string;
+          entity_id:    string;
+          payload?:     Record<string, unknown>;
+          processed_at?: string | null;
+          result?:      Record<string, unknown> | null;
+        };
+        Update: {
+          processed_at?: string | null;
+          result?:       Record<string, unknown> | null;
         };
       } & NoRelationships;
     };

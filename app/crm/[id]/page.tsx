@@ -7,11 +7,20 @@ import FollowUpBadge from "@/app/components/crm/FollowUpBadge";
 import ActivityTimeline from "@/app/components/crm/ActivityTimeline";
 import DeleteContactButton from "@/app/components/crm/DeleteContactButton";
 import QualificationPanel from "@/app/components/qualification/QualificationPanel";
+import AiContactPanel from "@/app/components/ai/AiContactPanel";
 import type { QualLeadType } from "@/lib/supabase/types";
 
 type Props = { params: Promise<{ id: string }> };
 
+function displayName(contact: { name?: string | null; first_name?: string | null; last_name?: string | null; company?: string | null; email?: string | null }): string {
+  if (contact.name) return contact.name;
+  const full = [contact.first_name, contact.last_name].filter(Boolean).join(" ").trim();
+  if (full) return full;
+  return contact.company ?? contact.email ?? "Unknown Contact";
+}
+
 function initials(name: string) {
+  if (!name) return "?";
   return name.split(" ").slice(0, 2).map((n) => n[0]?.toUpperCase() ?? "").join("");
 }
 
@@ -25,7 +34,8 @@ const AVATAR_COLORS = [
   "from-cyan-400 to-cyan-600",
   "from-pink-400 to-pink-600",
 ];
-function avatarGradient(name: string) {
+function avatarGradient(name: string | null | undefined) {
+  if (!name) return AVATAR_COLORS[0];
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
@@ -53,24 +63,24 @@ export default async function ContactDetailPage({ params }: Props) {
       <nav className="flex items-center gap-2 text-sm">
         <Link href="/crm" className="text-gray-400 hover:text-indigo-600 transition-colors">CRM</Link>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-300"><polyline points="9 18 15 12 9 6"/></svg>
-        <span className="text-gray-700 font-medium">{contact.name}</span>
+        <span className="text-gray-700 font-medium">{displayName(contact)}</span>
       </nav>
 
       {/* Hero card */}
       <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
         {/* Gradient strip */}
-        <div className={`h-1.5 w-full bg-gradient-to-r ${avatarGradient(contact.name)}`} />
+        <div className={`h-1.5 w-full bg-gradient-to-r ${avatarGradient(displayName(contact))}`} />
 
         <div className="p-6">
           <div className="flex flex-col sm:flex-row sm:items-start gap-5">
             {/* Avatar */}
-            <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${avatarGradient(contact.name)} flex items-center justify-center text-white text-xl font-bold shadow-sm flex-shrink-0`}>
-              {initials(contact.name)}
+            <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${avatarGradient(displayName(contact))} flex items-center justify-center text-white text-xl font-bold shadow-sm flex-shrink-0`}>
+              {initials(displayName(contact))}
             </div>
 
             {/* Name + meta */}
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-bold text-gray-900 leading-tight">{contact.name}</h2>
+              <h2 className="text-xl font-bold text-gray-900 leading-tight">{displayName(contact)}</h2>
               {(contact.role || contact.company) && (
                 <p className="text-sm text-gray-500 mt-0.5">
                   {[contact.role, contact.company].filter(Boolean).join(" · ")}
@@ -113,16 +123,25 @@ export default async function ContactDetailPage({ params }: Props) {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 Edit
               </Link>
-              <DeleteContactButton id={id} name={contact.name} />
+              <DeleteContactButton id={id} name={displayName(contact)} />
             </div>
           </div>
         </div>
       </div>
 
+      {/* AI Intelligence Panel */}
+      <AiContactPanel
+        contactId={id}
+        initialScore={contact.ai_score ?? null}
+        initialLabel={contact.ai_score_label ?? null}
+        initialScoredAt={contact.ai_scored_at ?? null}
+        initialSummary={contact.ai_summary ?? null}
+      />
+
       {/* AI Qualification Panel */}
       <QualificationPanel
         contactId={id}
-        contactName={contact.name}
+        contactName={displayName(contact)}
         defaultLeadType={contact.lead_type as QualLeadType | null}
       />
 
