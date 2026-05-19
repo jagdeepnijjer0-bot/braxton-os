@@ -450,6 +450,24 @@ function StatusDot({ label, ok, hint }: { label: string; ok: boolean; hint: stri
   );
 }
 
+// ── Collapsible panel — defined at module level so it has a stable identity ────
+function IntegrationsPanel({ label, open, onToggle, children }: { label: string; open: boolean; onToggle: () => void; children: React.ReactNode }) {
+  return (
+    <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-5 py-4 bg-white hover:bg-gray-50/50 transition-colors text-left"
+      >
+        <span className="text-sm font-semibold text-gray-800">{label}</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      {open && <div className="px-5 pb-5 pt-1 bg-white border-t border-gray-50">{children}</div>}
+    </div>
+  );
+}
+
 // ── Integrations Section ──────────────────────────────────────────────────────
 function IntegrationsSection() {
   const [metaOpen,      setMetaOpen]      = useState(false);
@@ -465,52 +483,35 @@ function IntegrationsSection() {
     { name: "Stripe",          desc: "Sync payments to finance tracker",  icon: "St", future: "stripe" },
   ];
 
-  function Panel({ label, open, onToggle, children }: { label: string; open: boolean; onToggle: () => void; children: React.ReactNode }) {
-    return (
-      <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-        <button
-          onClick={onToggle}
-          className="w-full flex items-center justify-between px-5 py-4 bg-white hover:bg-gray-50/50 transition-colors text-left"
-        >
-          <span className="text-sm font-semibold text-gray-800">{label}</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}>
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
-        </button>
-        {open && <div className="px-5 pb-5 pt-1 bg-white border-t border-gray-50">{children}</div>}
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
       {/* n8n Automation */}
-      <Panel label="⚡ n8n Automation — Event System" open={n8nOpen} onToggle={() => setN8nOpen(v => !v)}>
+      <IntegrationsPanel label="⚡ n8n Automation — Event System" open={n8nOpen} onToggle={() => setN8nOpen(v => !v)}>
         <div className="pt-4">
           <N8nConfig />
         </div>
-      </Panel>
+      </IntegrationsPanel>
 
       {/* Delivery Logs */}
-      <Panel label="📬 Webhook Delivery Logs" open={logsOpen} onToggle={() => setLogsOpen(v => !v)}>
+      <IntegrationsPanel label="📬 Webhook Delivery Logs" open={logsOpen} onToggle={() => setLogsOpen(v => !v)}>
         <div className="pt-4">
           <DeliveryLogs />
         </div>
-      </Panel>
+      </IntegrationsPanel>
 
       {/* Automation Logs */}
-      <Panel label="📋 Automation Event Logs" open={autoLogsOpen} onToggle={() => setAutoLogsOpen(v => !v)}>
+      <IntegrationsPanel label="📋 Automation Event Logs" open={autoLogsOpen} onToggle={() => setAutoLogsOpen(v => !v)}>
         <div className="pt-4">
           <AutomationLogs />
         </div>
-      </Panel>
+      </IntegrationsPanel>
 
       {/* Meta integration */}
-      <Panel label="📱 Meta / Social (Instagram & Facebook)" open={metaOpen} onToggle={() => setMetaOpen(v => !v)}>
+      <IntegrationsPanel label="📱 Meta / Social (Instagram & Facebook)" open={metaOpen} onToggle={() => setMetaOpen(v => !v)}>
         <div className="pt-4">
           <MetaIntegrationSection />
         </div>
-      </Panel>
+      </IntegrationsPanel>
 
       {/* Coming soon */}
       <div>

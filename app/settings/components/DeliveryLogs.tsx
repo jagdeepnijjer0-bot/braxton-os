@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useToast } from "@/app/components/ui/Toast";
 
 interface DeliveryLog {
@@ -40,7 +40,9 @@ function relativeTime(iso: string): string {
 }
 
 export default function DeliveryLogs() {
-  const toast = useToast();
+  const toast    = useToast();
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
 
   const [data,       setData]      = useState<LogsResponse | null>(null);
   const [loading,    setLoading]   = useState(true);
@@ -59,11 +61,11 @@ export default function DeliveryLogs() {
       if (!res.ok) throw new Error(await res.text());
       setData(await res.json());
     } catch {
-      toast.error("Failed to load delivery logs");
+      toastRef.current.error("Failed to load delivery logs");
     } finally {
       setLoading(false);
     }
-  }, [eventFilt, statusFilt, page, toast]);
+  }, [eventFilt, statusFilt, page]); // toast intentionally omitted — accessed via ref
 
   useEffect(() => { void load(); }, [load]);
 
@@ -76,10 +78,10 @@ export default function DeliveryLogs() {
         body: JSON.stringify({ id }),
       });
       const json = await res.json();
-      if (json.ok) { toast.success("Retry queued"); void load(); }
-      else toast.error("Retry failed", json.error);
+      if (json.ok) { toastRef.current.success("Retry queued"); void load(); }
+      else toastRef.current.error("Retry failed", json.error);
     } catch {
-      toast.error("Retry failed", "Network error");
+      toastRef.current.error("Retry failed", "Network error");
     } finally {
       setRetrying(null);
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useToast } from "@/app/components/ui/Toast";
 
 interface AutomationLog {
@@ -34,7 +34,9 @@ function relativeTime(iso: string): string {
 }
 
 export default function AutomationLogs() {
-  const toast = useToast();
+  const toast    = useToast();
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
 
   const [logs,      setLogs]      = useState<AutomationLog[]>([]);
   const [total,     setTotal]     = useState(0);
@@ -55,11 +57,11 @@ export default function AutomationLogs() {
       setLogs(json.logs ?? []);
       setTotal(json.total ?? 0);
     } catch {
-      toast.error("Failed to load automation logs");
+      toastRef.current.error("Failed to load automation logs");
     } finally {
       setLoading(false);
     }
-  }, [eventFilt, page, toast]);
+  }, [eventFilt, page]); // toast intentionally omitted — accessed via ref
 
   useEffect(() => { void load(); }, [load]);
 
