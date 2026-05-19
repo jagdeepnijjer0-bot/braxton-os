@@ -90,7 +90,7 @@ CREATE POLICY "attachments_delete_hardened" ON storage.objects
   USING (
     bucket_id = 'attachments'
     AND (
-      owner = auth.uid()::text
+      owner = auth.uid()
       OR public.current_user_role() IN ('admin', 'manager')
     )
   );
