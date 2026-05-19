@@ -8,6 +8,7 @@ import ActivityTimeline from "@/app/components/crm/ActivityTimeline";
 import DeleteContactButton from "@/app/components/crm/DeleteContactButton";
 import QualificationPanel from "@/app/components/qualification/QualificationPanel";
 import AiContactPanel from "@/app/components/ai/AiContactPanel";
+import FileAttachments from "@/app/components/files/FileAttachments";
 import type { QualLeadType } from "@/lib/supabase/types";
 
 type Props = { params: Promise<{ id: string }> };
@@ -202,6 +203,9 @@ export default async function ContactDetailPage({ params }: Props) {
               <p className="text-sm text-amber-900 leading-relaxed whitespace-pre-wrap">{contact.notes}</p>
             </div>
           )}
+
+          {/* Files */}
+          <FileAttachments entityType="contact" entityId={id} />
         </div>
 
         {/* Right: activity */}

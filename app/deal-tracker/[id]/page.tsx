@@ -8,6 +8,7 @@ import {
 } from "@/lib/constants/deals";
 import DealActivityTimeline from "@/app/components/deals/DealActivityTimeline";
 import StageBadge from "@/app/components/deals/StageBadge";
+import FileAttachments from "@/app/components/files/FileAttachments";
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -243,8 +244,9 @@ export default async function DealDetailPage({ params }: Props) {
           )}
         </div>
 
-        {/* Right column: activity timeline */}
-        <div className="lg:col-span-2">
+        {/* Right column: files + activity timeline */}
+        <div className="lg:col-span-2 space-y-5">
+          <FileAttachments entityType="deal" entityId={id} />
           <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Activity</h3>
             <DealActivityTimeline
@@ -263,3 +265,4 @@ export default async function DealDetailPage({ params }: Props) {
     </div>
   );
 }
+

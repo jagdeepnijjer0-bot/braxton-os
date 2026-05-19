@@ -9,6 +9,7 @@ import ProjectStageBadge from "@/app/components/projects/ProjectStageBadge";
 import ProgressBar from "@/app/components/projects/ProgressBar";
 import ProjectActivityTimeline from "@/app/components/projects/ProjectActivityTimeline";
 import CostTracker from "@/app/components/projects/CostTracker";
+import FileAttachments from "@/app/components/files/FileAttachments";
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -223,8 +224,9 @@ export default async function ProjectDetailPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Right column: activity */}
-        <div className="lg:col-span-2">
+        {/* Right column: photos/files + activity */}
+        <div className="lg:col-span-2 space-y-5">
+          <FileAttachments entityType="project" entityId={id} title="Photos & Files" />
           <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Activity</h3>
             <ProjectActivityTimeline

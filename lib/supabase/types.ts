@@ -984,6 +984,37 @@ export interface Database {
         };
       } & NoRelationships;
 
+      // ── file_attachments ──────────────────────────────────
+      file_attachments: {
+        Row: {
+          id:           string;
+          created_at:   string;
+          entity_type:  "contact" | "deal" | "project" | "conversation" | "task" | "inbox_message";
+          entity_id:    string;
+          storage_path: string;
+          bucket:       string;
+          filename:     string;
+          file_size:    number;
+          mime_type:    string;
+          label:        string | null;
+          uploaded_by:  string | null;
+        };
+        Insert: {
+          entity_type:  "contact" | "deal" | "project" | "conversation" | "task" | "inbox_message";
+          entity_id:    string;
+          storage_path: string;
+          bucket?:      string;
+          filename:     string;
+          file_size:    number;
+          mime_type:    string;
+          label?:       string | null;
+          uploaded_by?: string | null;
+        };
+        Update: {
+          label?:       string | null;
+        };
+      } & NoRelationships;
+
       // ── workflow_events ────────────────────────────────────
       workflow_events: {
         Row: {
