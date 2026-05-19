@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { deleteStorageObject } from "@/lib/storage/server";
+import { logAudit } from "@/lib/audit";
 
 // DELETE /api/attachments/:id
 export async function DELETE(
@@ -39,5 +40,14 @@ export async function DELETE(
     .eq("id", id);
 
   if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 });
+
+  void logAudit({
+    userId:     user.id,
+    action:     "delete",
+    entityType: "file",
+    entityId:   id,
+    metadata:   { storage_path: attachment.storage_path },
+  });
+
   return NextResponse.json({ ok: true });
 }

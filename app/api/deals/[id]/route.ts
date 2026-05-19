@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { logAudit, buildDiff } from "@/lib/audit";
 import type { Database } from "@/lib/supabase/types";
 
 type DealUpdate = Database["public"]["Tables"]["deals"]["Update"];
@@ -54,10 +55,22 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
 
+  const { data: before } = await supabase.from("deals").select("*").eq("id", id).single();
+
   const { data, error } = await supabase
     .from("deals").update(payload).eq("id", id).select().single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const { data: { user } } = await supabase.auth.getUser();
+  void logAudit({
+    userId:     user?.id ?? null,
+    action:     before?.stage !== data.stage ? "status_change" : "update",
+    entityType: "deal",
+    entityId:   id,
+    changes:    before ? buildDiff(before as Record<string, unknown>, data as Record<string, unknown>) : undefined,
+  });
+
   return NextResponse.json(data);
 }
 
@@ -66,5 +79,9 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   const supabase = await createServerClient();
   const { error } = await supabase.from("deals").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const { data: { user } } = await supabase.auth.getUser();
+  void logAudit({ userId: user?.id ?? null, action: "delete", entityType: "deal", entityId: id });
+
   return new NextResponse(null, { status: 204 });
 }

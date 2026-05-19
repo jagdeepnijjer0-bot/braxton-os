@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { dispatchWebhook } from "@/lib/webhooks/dispatcher";
+import { logAudit } from "@/lib/audit";
 import type { ContactStatus, LeadType, Database } from "@/lib/supabase/types";
 
 type ContactInsert = Database["public"]["Tables"]["contacts"]["Insert"];
@@ -110,6 +111,14 @@ export async function POST(req: NextRequest) {
     lead_type:  data.lead_type,
     source:     data.source,
     status:     data.status,
+  });
+
+  const { data: { user } } = await supabase.auth.getUser();
+  void logAudit({
+    userId:     user?.id ?? null,
+    action:     "create",
+    entityType: "contact",
+    entityId:   data.id,
   });
 
   return NextResponse.json(data, { status: 201 });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { logAudit } from "@/lib/audit";
 import type { DealStage } from "@/lib/supabase/types";
 
 const VALID_STAGES: DealStage[] = [
@@ -29,5 +30,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const { data: { user } } = await supabase.auth.getUser();
+  void logAudit({
+    userId:     user?.id ?? null,
+    action:     "status_change",
+    entityType: "deal",
+    entityId:   id,
+    changes:    { stage: [null, body.stage] },
+  });
+
   return NextResponse.json(data);
 }

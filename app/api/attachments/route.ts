@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { logAudit } from "@/lib/audit";
 import type { FileEntityType } from "@/lib/storage/config";
 
 // GET /api/attachments?entity_type=contact&entity_id=xxx
@@ -58,5 +59,14 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  void logAudit({
+    userId:     user.id,
+    action:     "upload",
+    entityType: "file",
+    entityId:   data.id,
+    metadata:   { entity_type, entity_id, filename, file_size, mime_type },
+  });
+
   return NextResponse.json({ ok: true, attachment: data });
 }

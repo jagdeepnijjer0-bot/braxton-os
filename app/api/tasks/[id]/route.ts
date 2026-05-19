@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { logAudit, buildDiff } from "@/lib/audit";
 import type { TaskStatus, TaskPriority, TaskType } from "@/lib/supabase/types";
 
 interface Ctx { params: Promise<{ id: string }> }
@@ -47,8 +48,20 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   if ("linked_project_id"    in b) update.linked_project_id    = b.linked_project_id    ?? null;
   if ("linked_conversation_id" in b) update.linked_conversation_id = b.linked_conversation_id ?? null;
 
+  const { data: before } = await supabase.from("tasks").select("*").eq("id", id).single();
+
   const { data, error } = await supabase.from("tasks").update(update).eq("id", id).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const { data: { user } } = await supabase.auth.getUser();
+  void logAudit({
+    userId:     user?.id ?? null,
+    action:     before?.status !== data.status ? "status_change" : "update",
+    entityType: "task",
+    entityId:   id,
+    changes:    before ? buildDiff(before as Record<string, unknown>, data as Record<string, unknown>) : undefined,
+  });
+
   return NextResponse.json(data);
 }
 
@@ -57,5 +70,9 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
   const supabase = await createServerClient();
   const { error } = await supabase.from("tasks").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const { data: { user } } = await supabase.auth.getUser();
+  void logAudit({ userId: user?.id ?? null, action: "delete", entityType: "task", entityId: id });
+
   return new NextResponse(null, { status: 204 });
 }

@@ -10,6 +10,7 @@ import {
 } from "@/lib/constants/deals";
 import StageBadge from "@/app/components/deals/StageBadge";
 import InvestorBadge from "@/app/components/deals/InvestorBadge";
+import { useToast } from "@/app/components/ui/Toast";
 import type { Database, DealStage } from "@/lib/supabase/types";
 
 type Deal = Database["public"]["Tables"]["deals"]["Row"] & {
@@ -152,21 +153,31 @@ function DealCard({
 export default function DealTrackerPage() {
   const [deals, setDeals]         = useState<Deal[]>([]);
   const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [search, setSearch]       = useState("");
   const [stageFilter, setStage]   = useState("");
   const [investorFilter, setInvestor] = useState("");
   const [view, setView]           = useState<"kanban" | "list">("kanban");
   const router = useRouter();
+  const toast  = useToast();
 
   const fetchDeals = useCallback(async () => {
     setLoading(true);
-    const p = new URLSearchParams();
-    if (search)        p.set("search", search);
-    if (stageFilter)   p.set("stage", stageFilter);
-    if (investorFilter) p.set("investor_status", investorFilter);
-    const res = await fetch(`/api/deals?${p}`);
-    if (res.ok) setDeals(await res.json());
-    setLoading(false);
+    setError(null);
+    try {
+      const p = new URLSearchParams();
+      if (search)         p.set("search", search);
+      if (stageFilter)    p.set("stage", stageFilter);
+      if (investorFilter) p.set("investor_status", investorFilter);
+      const res = await fetch(`/api/deals?${p}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setDeals(await res.json());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load deals");
+    } finally {
+      setLoading(false);
+    }
   }, [search, stageFilter, investorFilter]);
 
   useEffect(() => {
@@ -179,9 +190,18 @@ export default function DealTrackerPage() {
   }
 
   async function handleDelete(id: string, name: string) {
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
-    await fetch(`/api/deals/${id}`, { method: "DELETE" });
-    setDeals((prev) => prev.filter((d) => d.id !== id));
+    if (confirmDelete !== id) {
+      setConfirmDelete(id);
+      return;
+    }
+    setConfirmDelete(null);
+    const res = await fetch(`/api/deals/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setDeals((prev) => prev.filter((d) => d.id !== id));
+      toast.success("Deal deleted", name);
+    } else {
+      toast.error("Delete failed", "Please try again.");
+    }
   }
 
   // ── Financial summary ──────────────────────────────────────
@@ -267,6 +287,15 @@ export default function DealTrackerPage() {
           </Link>
         </div>
       </div>
+
+      {/* Error */}
+      {error && !loading && (
+        <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>{error}</span>
+          <button onClick={fetchDeals} className="ml-auto px-3 py-1 bg-red-100 hover:bg-red-200 rounded-lg font-medium transition-colors">Retry</button>
+        </div>
+      )}
 
       {/* Loading */}
       {loading && (
@@ -366,13 +395,22 @@ export default function DealTrackerPage() {
                       {formatCurrency(deal.projected_profit)}
                     </div>
                     <div><InvestorBadge value={deal.investor_status} /></div>
-                    <div onClick={(e) => e.stopPropagation()} className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Link href={`/deal-tracker/${deal.id}/edit`} className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-100 transition-colors">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      </Link>
-                      <button onClick={() => handleDelete(deal.id, deal.deal_name)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-                      </button>
+                    <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-1">
+                      {confirmDelete === deal.id ? (
+                        <>
+                          <button onClick={() => handleDelete(deal.id, deal.deal_name)} className="px-2 py-1 text-xs font-semibold bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">Delete</button>
+                          <button onClick={() => setConfirmDelete(null)} className="px-2 py-1 text-xs text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+                        </>
+                      ) : (
+                        <>
+                          <Link href={`/deal-tracker/${deal.id}/edit`} className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-100 transition-colors opacity-0 group-hover:opacity-100">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          </Link>
+                          <button onClick={() => handleDelete(deal.id, deal.deal_name)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}

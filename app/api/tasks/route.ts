@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { logAudit } from "@/lib/audit";
 import type { TaskStatus, TaskPriority, TaskType } from "@/lib/supabase/types";
 
 const VALID_STATUSES: TaskStatus[]   = ["todo","in_progress","completed","overdue","cancelled"];
@@ -18,23 +19,34 @@ export async function GET(req: NextRequest) {
   const contact  = searchParams.get("contact_id") ?? "";
   const deal     = searchParams.get("deal_id")    ?? "";
   const project  = searchParams.get("project_id") ?? "";
+  const page     = Math.max(1, parseInt(searchParams.get("page")  ?? "1",  10));
+  const limit    = Math.min(200, Math.max(1, parseInt(searchParams.get("limit") ?? "100", 10)));
+  const offset   = (page - 1) * limit;
+  const paginate = searchParams.get("paginate") === "true";
 
-  let query = supabase.from("tasks").select("*").order("due_date", { ascending: true, nullsFirst: false });
+  let query = supabase
+    .from("tasks")
+    .select("*", paginate ? { count: "exact" } : undefined)
+    .order("due_date", { ascending: true, nullsFirst: false });
 
   if (search) {
     const esc = search.replace(/[%_\\]/g, "\\$&");
     query = query.ilike("title", `%${esc}%`);
   }
-  if (status   && VALID_STATUSES.includes(status as TaskStatus))     query = query.eq("status",    status   as TaskStatus);
-  if (priority && VALID_PRIORITIES.includes(priority as TaskPriority)) query = query.eq("priority", priority as TaskPriority);
-  if (type     && VALID_TYPES.includes(type as TaskType))            query = query.eq("task_type", type     as TaskType);
+  if (status   && VALID_STATUSES.includes(status as TaskStatus))       query = query.eq("status",    status   as TaskStatus);
+  if (priority && VALID_PRIORITIES.includes(priority as TaskPriority)) query = query.eq("priority",  priority as TaskPriority);
+  if (type     && VALID_TYPES.includes(type as TaskType))              query = query.eq("task_type", type     as TaskType);
   if (overdue)  query = query.lt("due_date", new Date().toISOString().split("T")[0]).not("status", "in", '("completed","cancelled")');
   if (contact)  query = query.eq("linked_contact_id", contact);
   if (deal)     query = query.eq("linked_deal_id", deal);
   if (project)  query = query.eq("linked_project_id", project);
 
-  const { data, error } = await query;
+  if (paginate) query = query.range(offset, offset + limit - 1);
+
+  const { data, count, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (paginate) return NextResponse.json({ data: data ?? [], total: count ?? 0, page, limit });
   return NextResponse.json(data ?? []);
 }
 
@@ -70,5 +82,9 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await supabase.from("tasks").insert(insert).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const { data: { user } } = await supabase.auth.getUser();
+  void logAudit({ userId: user?.id ?? null, action: "create", entityType: "task", entityId: data.id });
+
   return NextResponse.json(data, { status: 201 });
 }

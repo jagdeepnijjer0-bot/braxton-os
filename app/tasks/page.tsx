@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import TaskCard from "@/app/components/tasks/TaskCard";
 import { TASK_STATUSES, TASK_PRIORITIES, TASK_TYPES } from "@/lib/constants/tasks";
+import { useToast } from "@/app/components/ui/Toast";
 import type { Database, TaskStatus } from "@/lib/supabase/types";
 
 type TaskRow = Database["public"]["Tables"]["tasks"]["Row"];
@@ -28,7 +29,9 @@ function Spinner() {
 export default function TasksPage() {
   const [tasks,   setTasks]   = useState<TaskRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState<string | null>(null);
   const [view,    setView]    = useState<View>("kanban");
+  const toast = useToast();
 
   const [search,     setSearch]     = useState("");
   const [priority,   setPriority]   = useState("");
@@ -37,6 +40,7 @@ export default function TasksPage() {
 
   const load = useCallback(async (s: string, pri: string, ty: string, st: string) => {
     setLoading(true);
+    setError(null);
     try {
       const p = new URLSearchParams();
       if (s)   p.set("search",   s);
@@ -44,8 +48,11 @@ export default function TasksPage() {
       if (ty)  p.set("type",     ty);
       if (st)  p.set("status",   st);
       const res  = await fetch(`/api/tasks?${p}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setTasks(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load tasks");
     } finally {
       setLoading(false);
     }
@@ -66,9 +73,14 @@ export default function TasksPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this task?")) return;
     setTasks(prev => prev.filter(t => t.id !== id));
-    await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      toast.error("Delete failed", "Please try again.");
+      load(search, priority, type, statusFilt);
+    } else {
+      toast.success("Task deleted");
+    }
   }
 
   const hasFilters = search || priority || type || statusFilt;
@@ -144,6 +156,15 @@ export default function TasksPage() {
           )}
         </div>
       </div>
+
+      {/* Error */}
+      {error && !loading && (
+        <div className="mx-4 mt-3 flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>{error}</span>
+          <button onClick={() => load(search, priority, type, statusFilt)} className="ml-auto px-3 py-1 bg-red-100 hover:bg-red-200 rounded-lg font-medium transition-colors">Retry</button>
+        </div>
+      )}
 
       {/* Content */}
       {loading ? <Spinner /> : (
