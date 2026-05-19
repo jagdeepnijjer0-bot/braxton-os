@@ -1,4 +1,6 @@
+import "server-only";
 import { createHmac } from "crypto";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // ─── Event registry ──────────────────────────────────────────────────────────
 
@@ -10,6 +12,12 @@ export const WEBHOOK_EVENTS = [
   "overdue_followup",    // CRM contact follow-up date passed
   "task_overdue",        // Task past its due date
   "deal_stage_changed",  // Deal moved to a new stage
+  // New in Phase 3B
+  "lead_updated",        // CRM contact updated
+  "task_created",        // New task created
+  "message_received",    // New inbound message received
+  "deal_updated",        // Deal record updated
+  "file_uploaded",       // File attachment uploaded
 ] as const;
 
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
@@ -43,6 +51,54 @@ function resolveUrl(event: WebhookEvent): string | null {
   return `${base.replace(/\/$/, "")}/${event.replace(/_/g, "-")}`;
 }
 
+// ─── Delivery log helpers ─────────────────────────────────────────────────────
+
+async function createDeliveryLog(event: WebhookEvent, url: string, requestBody: string): Promise<string | null> {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("webhook_delivery_logs")
+      .insert({
+        event,
+        url,
+        status:       "pending",
+        attempts:     0,
+        request_body: JSON.parse(requestBody) as Record<string, unknown>,
+      })
+      .select("id")
+      .single();
+    return data?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function updateDeliveryLog(
+  logId: string,
+  status: "success" | "failed",
+  attempts: number,
+  httpStatus: number | null,
+  responseMs: number | null,
+  errorMessage: string | null,
+): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    await admin
+      .from("webhook_delivery_logs")
+      .update({
+        status,
+        attempts,
+        http_status:      httpStatus,
+        response_ms:      responseMs,
+        error_message:    errorMessage,
+        last_attempt_at:  new Date().toISOString(),
+      })
+      .eq("id", logId);
+  } catch {
+    // Never block main flow
+  }
+}
+
 // ─── Outbound dispatcher ──────────────────────────────────────────────────────
 
 export async function dispatchWebhook(
@@ -61,26 +117,72 @@ export async function dispatchWebhook(
     data,
   });
 
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), 5000);
+  // Write pending delivery log row (fire-and-forget)
+  const logId = await createDeliveryLog(event, url, body);
 
-  try {
-    await fetch(url, {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "Content-Type": "application/json",
-        "X-Braxton-Event": event,
-        "X-Braxton-Signature": hmac(body),
-        "X-Braxton-Timestamp": Date.now().toString(),
-        "User-Agent": "BraxtonOS/1.0",
-      },
-      body,
-    });
-  } catch {
-    // Webhook failure must never break the main request
-  } finally {
-    clearTimeout(t);
+  const MAX_ATTEMPTS = 3;
+  const RETRY_DELAYS = [0, 1000, 2000]; // ms before each attempt
+
+  let lastHttpStatus: number | null = null;
+  let lastError: string | null = null;
+  let lastResponseMs: number | null = null;
+  let finalStatus: "success" | "failed" = "failed";
+  let attempts = 0;
+
+  for (let i = 0; i < MAX_ATTEMPTS; i++) {
+    // Wait before retry (delay[0] = 0 so first attempt is immediate)
+    if (RETRY_DELAYS[i] > 0) {
+      await new Promise((res) => setTimeout(res, RETRY_DELAYS[i]));
+    }
+
+    attempts = i + 1;
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 5000);
+    const start = Date.now();
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Braxton-Event": event,
+          "X-Braxton-Signature": hmac(body),
+          "X-Braxton-Timestamp": Date.now().toString(),
+          "User-Agent": "BraxtonOS/1.0",
+        },
+        body,
+      });
+
+      lastResponseMs = Date.now() - start;
+      lastHttpStatus = response.status;
+
+      if (response.ok) {
+        // 2xx — success, stop retrying
+        finalStatus = "success";
+        lastError = null;
+        break;
+      }
+
+      if (response.status >= 400 && response.status < 500) {
+        // 4xx client error — don't retry
+        lastError = `HTTP ${response.status}`;
+        break;
+      }
+
+      // 5xx — will retry
+      lastError = `HTTP ${response.status}`;
+    } catch (err) {
+      lastResponseMs = Date.now() - start;
+      lastError = err instanceof Error ? err.message : String(err);
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  // Update log row after final attempt (fire-and-forget)
+  if (logId) {
+    void updateDeliveryLog(logId, finalStatus, attempts, lastHttpStatus, lastResponseMs, lastError);
   }
 }
 

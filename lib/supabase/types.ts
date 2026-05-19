@@ -1065,6 +1065,71 @@ export interface Database {
           result?:       Record<string, unknown> | null;
         };
       } & NoRelationships;
+
+      // ── webhook_delivery_logs ──────────────────────────────
+      webhook_delivery_logs: {
+        Row: {
+          id:               string;
+          created_at:       string;
+          event:            string;
+          url:              string;
+          status:           "pending" | "success" | "failed" | "retrying";
+          attempts:         number;
+          http_status:      number | null;
+          error_message:    string | null;
+          request_body:     Record<string, unknown> | null;
+          response_ms:      number | null;
+          last_attempt_at:  string | null;
+        };
+        Insert: {
+          event:            string;
+          url:              string;
+          status?:          "pending" | "success" | "failed" | "retrying";
+          attempts?:        number;
+          http_status?:     number | null;
+          error_message?:   string | null;
+          request_body?:    Record<string, unknown> | null;
+          response_ms?:     number | null;
+          last_attempt_at?: string | null;
+        };
+        Update: {
+          status?:          "pending" | "success" | "failed" | "retrying";
+          attempts?:        number;
+          http_status?:     number | null;
+          error_message?:   string | null;
+          response_ms?:     number | null;
+          last_attempt_at?: string | null;
+        };
+      } & NoRelationships;
+
+      // ── automation_logs ────────────────────────────────────
+      automation_logs: {
+        Row: {
+          id:             string;
+          created_at:     string;
+          event_name:     string;
+          entity_type:    string | null;
+          entity_id:      string | null;
+          source:         string;
+          triggered_by:   string | null;
+          payload:        Record<string, unknown> | null;
+          webhooks_fired: number;
+          status:         "ok" | "partial" | "failed";
+          error_message:  string | null;
+        };
+        Insert: {
+          event_name:      string;
+          entity_type?:    string | null;
+          entity_id?:      string | null;
+          source?:         string;
+          triggered_by?:   string | null;
+          payload?:        Record<string, unknown> | null;
+          webhooks_fired?: number;
+          status?:         "ok" | "partial" | "failed";
+          error_message?:  string | null;
+        };
+        Update: Record<string, never>; // append-only
+      } & NoRelationships;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
