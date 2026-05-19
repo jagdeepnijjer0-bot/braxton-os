@@ -510,6 +510,11 @@ function AiLabSection() {
   const [mockReason,   setMockReason] = useState<string>("disabled");
   const [mockToggling, setMockToggling] = useState(false);
 
+  // Real contacts + conversations for dropdowns (only needed when mock is off)
+  const [contacts,  setContacts]  = useState<{ id: string; label: string }[]>([]);
+  const [convs,     setConvs]     = useState<{ id: string; label: string }[]>([]);
+  const [loadingDropdowns, setLoadingDropdowns] = useState(false);
+
   useEffect(() => {
     fetch("/api/ai/mock-mode")
       .then(r => r.ok ? r.json() : null)
@@ -517,9 +522,37 @@ function AiLabSection() {
       .catch(() => {});
   }, []);
 
+  // Load real contacts + conversations when mock mode is off
+  useEffect(() => {
+    if (mockOn !== false) return;
+    setLoadingDropdowns(true);
+    Promise.all([
+      fetch("/api/contacts?limit=100").then(r => r.ok ? r.json() : []),
+      fetch("/api/inbox?limit=100").then(r => r.ok ? r.json() : []),
+    ]).then(([cs, cvs]) => {
+      setContacts(
+        (Array.isArray(cs) ? cs : []).map((c: Record<string, unknown>) => ({
+          id:    c.id as string,
+          label: ((c.first_name || c.last_name)
+            ? `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim()
+            : (c.name as string | null) ?? "—") +
+            (c.company ? ` · ${c.company}` : ""),
+        }))
+      );
+      setConvs(
+        (Array.isArray(cvs) ? cvs : []).map((v: Record<string, unknown>) => ({
+          id:    v.id as string,
+          label: (v.contact_name as string | null ?? "Unknown") +
+            (v.subject ? ` — ${(v.subject as string).slice(0, 50)}` : "") +
+            ` (${v.platform})`,
+        }))
+      );
+      setLoadingDropdowns(false);
+    }).catch(() => setLoadingDropdowns(false));
+  }, [mockOn]);
+
   async function toggleMock() {
     if (mockOn === null) return;
-    // Cannot turn off mock when there's no API key or env override
     if (!mockOn === false && (mockReason === "no_api_key" || mockReason === "env_override")) return;
     setMockToggling(true);
     try {
@@ -532,6 +565,8 @@ function AiLabSection() {
       if (data.ok) {
         setMockOn(!mockOn);
         setMockReason(!mockOn ? "user_toggle" : "disabled");
+        // Reset selections when switching modes
+        setContactId(""); setConvId("");
       }
     } catch { /* ignore */ }
     setMockToggling(false);
@@ -541,8 +576,9 @@ function AiLabSection() {
     setRunning(true); setResult(null); setError(null);
     try {
       const body: Record<string, unknown> = { scenario };
-      if (scenario === "suggest")   body.contact_id = contactId;
-      if (scenario === "sentiment") body.conversation_id = convId;
+      // Only send IDs when real mode is on; in mock mode the server uses sentinel IDs
+      if (scenario === "suggest"   && !mockOn) body.contact_id      = contactId;
+      if (scenario === "sentiment" && !mockOn) body.conversation_id = convId;
 
       const res = await fetch("/api/ai/test", {
         method: "POST",
@@ -569,6 +605,11 @@ function AiLabSection() {
     setRunning(false);
   }
 
+  // Disable Run button when real mode needs an ID but none is selected
+  const needsContact = scenario === "suggest"   && !mockOn && !contactId;
+  const needsConv    = scenario === "sentiment" && !mockOn && !convId;
+  const runDisabled  = running || needsContact || needsConv;
+
   return (
     <div className="space-y-5">
       {/* Info card */}
@@ -594,10 +635,10 @@ function AiLabSection() {
                 )}
               </div>
               <p className="text-xs text-gray-500 mt-0.5">
-                {mockReason === "no_api_key"    && "Auto-enabled — no ANTHROPIC_API_KEY found. App will never crash."}
-                {mockReason === "env_override"  && "Forced on by AI_MOCK_MODE=true environment variable."}
-                {mockReason === "user_toggle"   && "Enabled by you. All AI outputs are deterministic fake data."}
-                {mockReason === "disabled"      && "Off — real Anthropic API will be called for all AI operations."}
+                {mockReason === "no_api_key"   && "Auto-enabled — no ANTHROPIC_API_KEY found. App will never crash."}
+                {mockReason === "env_override" && "Forced on by AI_MOCK_MODE=true environment variable."}
+                {mockReason === "user_toggle"  && "Enabled by you. All AI outputs are deterministic fake data."}
+                {mockReason === "disabled"     && "Off — real Anthropic API will be called for all AI operations."}
               </p>
             </div>
             <button
@@ -633,14 +674,14 @@ function AiLabSection() {
             <label className="block text-xs font-medium text-gray-500 mb-1">Scenario</label>
             <div className="flex flex-wrap gap-2">
               {([
-                { id: "score",        label: "Score mock lead" },
+                { id: "score",        label: "Score lead" },
                 { id: "suggest",      label: "Suggest tasks" },
-                { id: "smart_notify", label: "Smart notification sweep" },
+                { id: "smart_notify", label: "Smart notifications" },
                 { id: "sentiment",    label: "Sentiment detection" },
               ] as const).map(s => (
                 <button
                   key={s.id}
-                  onClick={() => setScenario(s.id)}
+                  onClick={() => { setScenario(s.id); setResult(null); setError(null); }}
                   className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-all ${
                     scenario === s.id
                       ? "bg-indigo-600 text-white border-indigo-600"
@@ -653,45 +694,58 @@ function AiLabSection() {
             </div>
           </div>
 
+          {/* Per-scenario context */}
           {scenario === "score" && (
-            <p className="text-sm text-gray-500">Uses a mock high-intent investor contact. No DB required.</p>
+            <p className="text-sm text-gray-500">
+              {mockOn ? "Uses a built-in mock investor contact." : "Uses a built-in mock investor contact (score is not persisted)."}
+            </p>
           )}
+
           {scenario === "suggest" && (
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Contact ID</label>
-              <input
-                type="text"
+            mockOn ? (
+              <MockIdBadge label="Contact" id="mock-contact-id" />
+            ) : (
+              <ContactSelect
+                contacts={contacts}
                 value={contactId}
-                onChange={e => setContactId(e.target.value)}
-                placeholder="Paste a real contact UUID from CRM"
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                onChange={setContactId}
+                loading={loadingDropdowns}
               />
-            </div>
+            )
           )}
+
           {scenario === "smart_notify" && (
-            <p className="text-sm text-gray-500">Scans all contacts and tasks for overdue follow-ups, hot leads going cold, and overdue tasks. Creates real notifications.</p>
+            <p className="text-sm text-gray-500">
+              Scans all contacts and tasks for overdue follow-ups, hot leads going cold, and overdue tasks. Creates real notifications.
+            </p>
           )}
+
           {scenario === "sentiment" && (
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Conversation ID</label>
-              <input
-                type="text"
+            mockOn ? (
+              <MockIdBadge label="Conversation" id="mock-conversation-id" />
+            ) : (
+              <ConvSelect
+                convs={convs}
                 value={convId}
-                onChange={e => setConvId(e.target.value)}
-                placeholder="Paste a real conversation UUID from Inbox"
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                onChange={setConvId}
+                loading={loadingDropdowns}
               />
-            </div>
+            )
           )}
 
           <div className="flex items-center gap-3">
             <button
               onClick={scenario === "smart_notify" ? runSmartNotify : run}
-              disabled={running}
+              disabled={runDisabled}
               className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
             >
               {running ? "Running…" : "Run Test"}
             </button>
+            {(needsContact || needsConv) && (
+              <p className="text-xs text-amber-600">
+                Select a {needsContact ? "contact" : "conversation"} above to run this test.
+              </p>
+            )}
             {result && (
               <button
                 onClick={() => { setResult(null); setError(null); }}
@@ -716,6 +770,82 @@ function AiLabSection() {
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Result</p>
           <pre className="text-xs text-green-400 whitespace-pre-wrap overflow-auto max-h-96 font-mono">{result}</pre>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ── AI Lab sub-components ─────────────────────────────────────────────────────
+
+function MockIdBadge({ label, id }: { label: string; id: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs font-medium text-gray-500">{label}:</span>
+      <span className="inline-flex items-center gap-1.5 text-xs font-mono font-medium px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-700">
+        ⚡ {id}
+        <span className="font-sans font-normal text-amber-500">(built-in mock)</span>
+      </span>
+    </div>
+  );
+}
+
+function ContactSelect({
+  contacts, value, onChange, loading,
+}: {
+  contacts: { id: string; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
+  loading: boolean;
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-500 mb-1">Contact</label>
+      {loading ? (
+        <p className="text-xs text-gray-400">Loading contacts…</p>
+      ) : contacts.length === 0 ? (
+        <p className="text-xs text-gray-400">No contacts found. Add one in CRM first.</p>
+      ) : (
+        <select
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="">— Select a contact —</option>
+          {contacts.map(c => (
+            <option key={c.id} value={c.id}>{c.label}</option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+}
+
+function ConvSelect({
+  convs, value, onChange, loading,
+}: {
+  convs: { id: string; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
+  loading: boolean;
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-500 mb-1">Conversation</label>
+      {loading ? (
+        <p className="text-xs text-gray-400">Loading conversations…</p>
+      ) : convs.length === 0 ? (
+        <p className="text-xs text-gray-400">No conversations found. Send a test message via Inbox first.</p>
+      ) : (
+        <select
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="">— Select a conversation —</option>
+          {convs.map(c => (
+            <option key={c.id} value={c.id}>{c.label}</option>
+          ))}
+        </select>
       )}
     </div>
   );
