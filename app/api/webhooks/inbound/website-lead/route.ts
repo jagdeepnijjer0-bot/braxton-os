@@ -64,31 +64,42 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // In-app notification
-  await supabase.from("notifications").insert({
-    title:              `New website lead: ${contact.name}`,
-    body:               `Email: ${contact.email ?? "N/A"} — auto-imported from website form.`,
-    type:               "system",
-    priority:           "high",
-    link_url:           `/crm/${contact.id}`,
-    linked_entity_type: "contact",
-    linked_entity_id:   contact.id,
-    source_key:         `website_lead_${contact.id}`,
-  });
-
-  // Fire back to n8n for further automation (e.g. send welcome email, Slack alert)
-  await dispatchWebhook("website_lead", {
-    contact_id: contact.id,
-    name:       contact.name,
-    email:      contact.email,
-    phone:      contact.phone,
-    company:    contact.company,
-    source:     contact.source,
-    lead_type:  contact.lead_type,
-  });
-
-  return NextResponse.json(
+  const response = NextResponse.json(
     { success: true, contact_id: contact.id },
     { status: 201 },
   );
+
+  // Fire-and-forget: notification and webhook — failures only log warnings
+  void (async () => {
+    try {
+      await supabase.from("notifications").insert({
+        title:              `New website lead: ${contact.name}`,
+        body:               `Email: ${contact.email ?? "N/A"} — auto-imported from website form.`,
+        type:               "system",
+        priority:           "high",
+        link_url:           `/crm/${contact.id}`,
+        linked_entity_type: "contact",
+        linked_entity_id:   contact.id,
+        source_key:         `website_lead_${contact.id}`,
+      });
+    } catch (e) {
+      console.warn("[webhooks/website-lead] notification insert failed:", e);
+    }
+
+    try {
+      await dispatchWebhook("website_lead", {
+        contact_id: contact.id,
+        name:       contact.name,
+        email:      contact.email,
+        phone:      contact.phone,
+        company:    contact.company,
+        source:     contact.source,
+        lead_type:  contact.lead_type,
+      });
+    } catch (e) {
+      console.warn("[webhooks/website-lead] webhook dispatch failed:", e);
+    }
+  })();
+
+  return response;
 }

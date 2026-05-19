@@ -104,7 +104,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: subErr.message }, { status: 500 });
   }
 
-  // In-app notification
+  // Return success immediately — core data is saved. Side-effects run fire-and-forget.
+  const response = NextResponse.json(
+    { success: true, submission_id: submission.id, contact_id },
+    { status: 201 },
+  );
+
   const formLabels: Record<FormType, string> = {
     landlord:      "Landlord",
     investor:      "Investor",
@@ -113,39 +118,49 @@ export async function POST(req: NextRequest) {
     ai_automation: "AI Automation",
   };
 
-  await supabase.from("notifications").insert({
-    title:              `New ${formLabels[form_type]} form submission: ${name}`,
-    body:               `Email: ${email ?? "N/A"} — submitted via public form.`,
-    type:               "system",
-    priority:           "high",
-    link_url:           `/submissions`,
-    linked_entity_type: "contact",
-    linked_entity_id:   contact_id,
-    source_key:         `form_submission_${submission.id}`,
-  });
+  // Fire-and-forget: notification, task, and webhook — failures only log warnings
+  void (async () => {
+    try {
+      await supabase.from("notifications").insert({
+        title:              `New ${formLabels[form_type]} form submission: ${name}`,
+        body:               `Email: ${email ?? "N/A"} — submitted via public form.`,
+        type:               "system",
+        priority:           "high",
+        link_url:           `/submissions`,
+        linked_entity_type: "contact",
+        linked_entity_id:   contact_id,
+        source_key:         `form_submission_${submission.id}`,
+      });
+    } catch (e) {
+      console.warn("[forms/submit] notification insert failed:", e);
+    }
 
-  // Auto-create follow-up task
-  await supabase.from("tasks").insert({
-    title:             TASK_TITLES[form_type],
-    description:       `Form submission from ${name}${email ? ` (${email})` : ""}. Review at /submissions.`,
-    task_type:         "follow_up",
-    status:            "todo",
-    priority:          "high",
-    linked_contact_id: contact_id,
-  });
+    try {
+      await supabase.from("tasks").insert({
+        title:             TASK_TITLES[form_type],
+        description:       `Form submission from ${name}${email ? ` (${email})` : ""}. Review at /submissions.`,
+        task_type:         "follow_up",
+        status:            "todo",
+        priority:          "high",
+        linked_contact_id: contact_id,
+      });
+    } catch (e) {
+      console.warn("[forms/submit] task insert failed:", e);
+    }
 
-  // Fire n8n webhook (no-op if N8N_ENABLED !== "true")
-  await dispatchWebhook("website_lead", {
-    submission_id: submission.id,
-    form_type,
-    contact_id,
-    name,
-    email,
-    phone,
-  });
+    try {
+      await dispatchWebhook("website_lead", {
+        submission_id: submission.id,
+        form_type,
+        contact_id,
+        name,
+        email,
+        phone,
+      });
+    } catch (e) {
+      console.warn("[forms/submit] webhook dispatch failed:", e);
+    }
+  })();
 
-  return NextResponse.json(
-    { success: true, submission_id: submission.id, contact_id },
-    { status: 201 },
-  );
+  return response;
 }
