@@ -23,20 +23,21 @@ ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS owner_id     uuid
   REFERENCES auth.users(id) ON DELETE SET NULL;
 
 -- ── Expand status CHECK to include 'lead' ──────────────────────────────────
--- Find and drop the existing status check constraint (auto-named by Postgres)
+-- Drop ALL check constraints on contacts that reference the status column,
+-- regardless of how Postgres auto-named them, then recreate with 'lead' added.
 DO $$
 DECLARE
   cname text;
 BEGIN
-  SELECT conname INTO cname
-    FROM pg_constraint
-    WHERE conrelid = 'public.contacts'::regclass
-      AND contype = 'c'
-      AND pg_get_constraintdef(oid) ILIKE '%status%in%'
-    LIMIT 1;
-  IF cname IS NOT NULL THEN
+  FOR cname IN
+    SELECT conname
+      FROM pg_constraint
+      WHERE conrelid = 'public.contacts'::regclass
+        AND contype = 'c'
+        AND pg_get_constraintdef(oid) ILIKE '%status%'
+  LOOP
     EXECUTE format('ALTER TABLE public.contacts DROP CONSTRAINT %I', cname);
-  END IF;
+  END LOOP;
 END;
 $$;
 
