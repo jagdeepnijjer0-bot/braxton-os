@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
 import KpiCard from "./components/dashboard/KpiCard";
 import PipelineBar from "./components/dashboard/PipelineBar";
@@ -17,119 +18,98 @@ function fmt(n: number) {
   return "£" + n.toLocaleString("en-GB");
 }
 
-// ─── Page ───────────────────────────────────────────────────────────────────
+// ─── Cached data fetcher — results reused for 60 s per user ─────────────────
+// unstable_cache keys by [userId, monthKey] so each user sees their own data
+// and the cache naturally rotates on month change.
 
-export default async function DashboardPage() {
+async function fetchDashboardData(userId: string, monthKey: string) {
   const supabase = await createServerClient();
 
   const now              = new Date();
   const startOfMonth     = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const thirtyDaysAgo    = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const sevenDaysFromNow = new Date(now.getTime() + 7  * 24 * 60 * 60 * 1000).toISOString();
-  const monthLabel       = now.toLocaleString("en-GB", { month: "long", year: "numeric" });
 
-  // ── Parallel fetches ──────────────────────────────────────────────────────
   const [
-    contactsTotalRes,
-    contactsNewRes,
-    dealsRes,
-    projectsRes,
-    financeRes,
-    overdueTasksRes,
-    unreadInboxRes,
-    outreachRepliesRes,
-    bookedCallsRes,
-    hotLeadsRes,
-    eventsRes,
-    notifsRes,
-    contactActsRes,
-    dealActsRes,
+    contactsTotalRes, contactsNewRes, dealsRes, projectsRes, financeRes,
+    overdueTasksRes, unreadInboxRes, outreachRepliesRes, bookedCallsRes,
+    hotLeadsRes, eventsRes, notifsRes, contactActsRes, dealActsRes,
   ] = await Promise.all([
-    // Total contacts
     supabase.from("contacts").select("*", { count: "exact", head: true }),
-    // New contacts/leads last 30 days
     supabase.from("contacts").select("*", { count: "exact", head: true }).gte("created_at", thirtyDaysAgo),
-    // Active deals (all non-dead)
-    supabase
-      .from("deals")
-      .select("id, deal_name, stage, projected_profit, purchase_price, address")
-      .neq("stage", "dead")
-      .order("created_at", { ascending: false })
-      .limit(50),
-    // Active projects
-    supabase
-      .from("projects")
-      .select("id, project_name, stage, progress_percentage, budget, amount_spent")
-      .neq("stage", "completed")
-      .order("created_at", { ascending: false })
-      .limit(6),
-    // Finance MTD — only need type + amount to compute totals, cap at 500 rows
-    supabase
-      .from("finance_transactions")
-      .select("transaction_type, total_amount")
-      .gte("transaction_date", startOfMonth)
-      .limit(500),
-    // Overdue tasks: todo/in_progress past due_date
-    supabase
-      .from("tasks")
-      .select("*", { count: "exact", head: true })
-      .in("status", ["todo", "in_progress"])
-      .lt("due_date", now.toISOString()),
-    // Unread inbox
-    supabase
-      .from("inbox_conversations")
-      .select("*", { count: "exact", head: true })
-      .eq("is_read", false),
-    // Outreach replies
-    supabase
-      .from("outreach_leads")
-      .select("*", { count: "exact", head: true })
-      .in("reply_status", ["replied", "positive"]),
-    // Booked calls
-    supabase
-      .from("outreach_leads")
-      .select("*", { count: "exact", head: true })
-      .eq("booked_call", true),
-    // Hot AI-qualified leads
-    supabase
-      .from("qualification_sessions")
-      .select("*", { count: "exact", head: true })
-      .eq("heat", "hot"),
-    // Upcoming calendar events (next 7 days)
-    supabase
-      .from("calendar_events")
-      .select("id, title, event_type, start_datetime, end_datetime, all_day")
-      .gte("start_datetime", now.toISOString())
-      .lte("start_datetime", sevenDaysFromNow)
-      .order("start_datetime", { ascending: true })
-      .limit(8),
-    // Unread notifications (most recent first)
-    supabase
-      .from("notifications")
-      .select("id, title, body, type, priority, created_at, is_read, link_url")
-      .eq("is_read", false)
-      .order("created_at", { ascending: false })
-      .limit(6),
-    // Recent contact activities
-    supabase
-      .from("contact_activities")
-      .select("id, created_at, type, body, contact_id")
-      .order("created_at", { ascending: false })
-      .limit(8),
-    // Recent deal activities
-    supabase
-      .from("deal_activities")
-      .select("id, created_at, type, body, deal_id")
-      .order("created_at", { ascending: false })
-      .limit(8),
+    supabase.from("deals").select("id, deal_name, stage, projected_profit, purchase_price, address").neq("stage", "dead").order("created_at", { ascending: false }).limit(50),
+    supabase.from("projects").select("id, project_name, stage, progress_percentage, budget, amount_spent").neq("stage", "completed").order("created_at", { ascending: false }).limit(6),
+    supabase.from("finance_transactions").select("transaction_type, total_amount").gte("transaction_date", startOfMonth).limit(500),
+    supabase.from("tasks").select("*", { count: "exact", head: true }).in("status", ["todo", "in_progress"]).lt("due_date", now.toISOString()),
+    supabase.from("inbox_conversations").select("*", { count: "exact", head: true }).eq("is_read", false),
+    supabase.from("outreach_leads").select("*", { count: "exact", head: true }).in("reply_status", ["replied", "positive"]),
+    supabase.from("outreach_leads").select("*", { count: "exact", head: true }).eq("booked_call", true),
+    supabase.from("qualification_sessions").select("*", { count: "exact", head: true }).eq("heat", "hot"),
+    supabase.from("calendar_events").select("id, title, event_type, start_datetime, end_datetime, all_day").gte("start_datetime", now.toISOString()).lte("start_datetime", sevenDaysFromNow).order("start_datetime", { ascending: true }).limit(8),
+    supabase.from("notifications").select("id, title, body, type, priority, created_at, is_read, link_url").eq("is_read", false).order("created_at", { ascending: false }).limit(6),
+    supabase.from("contact_activities").select("id, created_at, type, body, contact_id").order("created_at", { ascending: false }).limit(8),
+    supabase.from("deal_activities").select("id, created_at, type, body, deal_id").order("created_at", { ascending: false }).limit(8),
   ]);
+
+  // Suppress unused-variable warning — monthKey is only used as a cache-key discriminator
+  void monthKey;
+
+  return {
+    contactsTotal: contactsTotalRes.count ?? 0,
+    contactsNew:   contactsNewRes.count   ?? 0,
+    deals:         dealsRes.data          ?? [],
+    projects:      projectsRes.data       ?? [],
+    finTxns:       financeRes.data        ?? [],
+    overdueTasks:  overdueTasksRes.count  ?? 0,
+    unreadInbox:   unreadInboxRes.count   ?? 0,
+    outreachReplies: outreachRepliesRes.count ?? 0,
+    bookedCalls:   bookedCallsRes.count   ?? 0,
+    hotLeads:      hotLeadsRes.count      ?? 0,
+    events:        eventsRes.data         ?? [],
+    notifications: notifsRes.data         ?? [],
+    contactActs:   contactActsRes.data    ?? [],
+    dealActs:      dealActsRes.data       ?? [],
+  };
+}
+
+// ─── Page ───────────────────────────────────────────────────────────────────
+
+export default async function DashboardPage() {
+  const supabase = await createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const userId   = user?.id ?? "anon";
+
+  const now        = new Date();
+  const monthKey   = `${now.getFullYear()}-${now.getMonth()}`;
+  const monthLabel = now.toLocaleString("en-GB", { month: "long", year: "numeric" });
+
+  // Cache per-user, rotates every 60 s and on month change
+  const getCached = unstable_cache(
+    () => fetchDashboardData(userId, monthKey),
+    ["dashboard", userId, monthKey],
+    { revalidate: 60, tags: ["dashboard"] },
+  );
+
+  const {
+    contactsTotal: totalContacts,
+    contactsNew:   newLeads,
+    deals:         allDeals,
+    projects,
+    finTxns,
+    overdueTasks,
+    unreadInbox,
+    outreachReplies,
+    bookedCalls,
+    hotLeads,
+    events,
+    notifications,
+    contactActs:   contactActsData,
+    dealActs:      dealActsData,
+  } = await getCached();
 
   // ── Derived KPIs ──────────────────────────────────────────────────────────
 
-  const totalContacts = contactsTotalRes.count ?? 0;
-  const newLeads      = contactsNewRes.count ?? 0;
-
-  const deals         = dealsRes.data ?? [];
+  const deals         = allDeals;
   const activeDeals   = deals.length;
   const pipelineValue = deals.reduce((s, d) => s + (d.projected_profit ?? 0), 0);
   const recentDeals   = deals.slice(0, 6);
@@ -142,25 +122,14 @@ export default async function DashboardPage() {
     stageValues[d.stage] = (stageValues[d.stage] ?? 0) + (d.projected_profit ?? 0);
   });
 
-  const projects = projectsRes.data ?? [];
-
-  const finTxns  = financeRes.data ?? [];
-  const moneyIn  = finTxns.filter(t => t.transaction_type === "income").reduce((s, t) => s + (t.total_amount ?? 0), 0);
-  const moneyOut = finTxns.filter(t => t.transaction_type === "expense").reduce((s, t) => s + (t.total_amount ?? 0), 0);
+  const moneyIn   = finTxns.filter(t => t.transaction_type === "income").reduce((s, t) => s + (t.total_amount ?? 0), 0);
+  const moneyOut  = finTxns.filter(t => t.transaction_type === "expense").reduce((s, t) => s + (t.total_amount ?? 0), 0);
   const netProfit = moneyIn - moneyOut;
 
-  const overdueTasks    = overdueTasksRes.count ?? 0;
-  const unreadInbox     = unreadInboxRes.count ?? 0;
-  const outreachReplies = outreachRepliesRes.count ?? 0;
-  const bookedCalls     = bookedCallsRes.count ?? 0;
-  const hotLeads        = hotLeadsRes.count ?? 0;
-
-  const events       = eventsRes.data ?? [];
-  const notifications = notifsRes.data ?? [];
   const unreadNotifsCount = notifications.length;
 
   // ── Combined activity feed ────────────────────────────────────────────────
-  const contactActs: ActivityItem[] = (contactActsRes.data ?? []).map(a => ({
+  const contactActs: ActivityItem[] = contactActsData.map(a => ({
     id:         a.id,
     created_at: a.created_at,
     type:       a.type,
@@ -169,7 +138,7 @@ export default async function DashboardPage() {
     label:      "CRM",
     href:       `/crm/${a.contact_id}`,
   }));
-  const dealActs: ActivityItem[] = (dealActsRes.data ?? []).map(a => ({
+  const dealActs: ActivityItem[] = dealActsData.map(a => ({
     id:         a.id,
     created_at: a.created_at,
     type:       a.type,

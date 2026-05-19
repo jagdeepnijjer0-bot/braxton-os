@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import TaskCard from "@/app/components/tasks/TaskCard";
 import { TASK_STATUSES, TASK_PRIORITIES, TASK_TYPES } from "@/lib/constants/tasks";
@@ -84,13 +84,13 @@ export default function TasksPage() {
   }
 
   const hasFilters = search || priority || type || statusFilt;
-  const counts = {
+  const counts = useMemo(() => ({
     total:       tasks.length,
     todo:        tasks.filter(t => t.status === "todo").length,
     in_progress: tasks.filter(t => t.status === "in_progress").length,
     overdue:     tasks.filter(t => t.status === "overdue").length,
     completed:   tasks.filter(t => t.status === "completed").length,
-  };
+  }), [tasks]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">

@@ -35,9 +35,12 @@ export default function CalendarPage() {
     try {
       const from = new Date(y, m, 1).toISOString();
       const to   = new Date(y, m + 1, 0, 23, 59, 59).toISOString();
+      // Tasks: only fetch those due in the current month (same date range as calendar)
+      const taskFrom = new Date(y, m, 1).toISOString().split("T")[0];
+      const taskTo   = new Date(y, m + 1, 0).toISOString().split("T")[0];
       const [evRes, tkRes] = await Promise.all([
         fetch(`/api/calendar?from=${from}&to=${to}`),
-        fetch(`/api/tasks`),
+        fetch(`/api/tasks?due_from=${taskFrom}&due_to=${taskTo}&limit=100`),
       ]);
       const [evData, tkData] = await Promise.all([evRes.json(), tkRes.json()]);
       setEvents(Array.isArray(evData) ? evData : []);

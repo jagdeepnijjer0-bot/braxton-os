@@ -16,6 +16,8 @@ export async function GET(req: NextRequest) {
   const priority = searchParams.get("priority") ?? "";
   const type     = searchParams.get("type")     ?? "";
   const overdue  = searchParams.get("overdue")  === "true";
+  const due_from = searchParams.get("due_from") ?? "";
+  const due_to   = searchParams.get("due_to")   ?? "";
   const contact  = searchParams.get("contact_id") ?? "";
   const deal     = searchParams.get("deal_id")    ?? "";
   const project  = searchParams.get("project_id") ?? "";
@@ -36,7 +38,9 @@ export async function GET(req: NextRequest) {
   if (status   && VALID_STATUSES.includes(status as TaskStatus))       query = query.eq("status",    status   as TaskStatus);
   if (priority && VALID_PRIORITIES.includes(priority as TaskPriority)) query = query.eq("priority",  priority as TaskPriority);
   if (type     && VALID_TYPES.includes(type as TaskType))              query = query.eq("task_type", type     as TaskType);
-  if (overdue)  query = query.lt("due_date", new Date().toISOString().split("T")[0]).not("status", "in", '("completed","cancelled")');
+  if (overdue)   query = query.lt("due_date", new Date().toISOString().split("T")[0]).not("status", "in", '("completed","cancelled")');
+  if (due_from)  query = query.gte("due_date", due_from);
+  if (due_to)    query = query.lte("due_date", due_to);
   if (contact)  query = query.eq("linked_contact_id", contact);
   if (deal)     query = query.eq("linked_deal_id", deal);
   if (project)  query = query.eq("linked_project_id", project);
