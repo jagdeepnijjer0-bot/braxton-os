@@ -173,6 +173,9 @@ export default async function ProjectDetailPage({ params }: Props) {
         </div>
       )}
 
+      {/* Photos & Files — full-width section */}
+      <FileAttachments entityType="project" entityId={id} title="Photos & Files" />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column */}
         <div className="lg:col-span-1 space-y-5">
@@ -224,9 +227,8 @@ export default async function ProjectDetailPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Right column: photos/files + activity */}
+        {/* Right column: activity */}
         <div className="lg:col-span-2 space-y-5">
-          <FileAttachments entityType="project" entityId={id} title="Photos & Files" />
           <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Activity</h3>
             <ProjectActivityTimeline

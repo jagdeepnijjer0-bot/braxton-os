@@ -22,28 +22,28 @@ function formatBytes(bytes: number): string {
 }
 
 export default function FileUploadZone({ entityType, entityId, onUploaded }: Props) {
-  const [dragging, setDragging]   = useState(false);
-  const [uploads,  setUploads]    = useState<UploadState[]>([]);
+  const [dragging, setDragging] = useState(false);
+  const [uploads,  setUploads]  = useState<UploadState[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function setProgress(idx: number, progress: number) {
     setUploads(prev => prev.map((u, i) => i === idx ? { ...u, progress } : u));
   }
-  function setError(idx: number, error: string) {
+  function setUploadError(idx: number, error: string) {
     setUploads(prev => prev.map((u, i) => i === idx ? { ...u, error } : u));
   }
 
   async function uploadFile(file: File, idx: number) {
     if (!ALLOWED_MIME_TYPES[file.type]) {
-      setError(idx, `File type ${file.type || "unknown"} is not allowed`);
+      setUploadError(idx, `File type "${file.type || "unknown"}" is not allowed`);
       return;
     }
     if (file.size > MAX_FILE_SIZE) {
-      setError(idx, `File exceeds 50 MB limit (${formatBytes(file.size)})`);
+      setUploadError(idx, `File too large — ${formatBytes(file.size)} exceeds 50 MB limit`);
       return;
     }
 
-    // 1. Get signed upload URL
+    // Step 1: get signed upload URL
     let signedData: { signedUrl: string; token: string; path: string; file_id: string };
     try {
       const res = await fetch("/api/attachments/upload-url", {
@@ -58,14 +58,14 @@ export default function FileUploadZone({ entityType, entityId, onUploaded }: Pro
         }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(idx, data.error ?? "Failed to get upload URL"); return; }
+      if (!res.ok) { setUploadError(idx, data.error ?? "Failed to get upload URL"); return; }
       signedData = data;
     } catch {
-      setError(idx, "Network error requesting upload URL");
+      setUploadError(idx, "Network error requesting upload URL");
       return;
     }
 
-    // 2. XHR upload with progress
+    // Step 2: PUT directly to Supabase Storage with progress tracking
     await new Promise<void>((resolve) => {
       const xhr = new XMLHttpRequest();
       xhr.open("PUT", signedData.signedUrl);
@@ -78,7 +78,7 @@ export default function FileUploadZone({ entityType, entityId, onUploaded }: Pro
       xhr.onload = async () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           setProgress(idx, 95);
-          // 3. Save metadata
+          // Step 3: save metadata row
           try {
             const metaRes = await fetch("/api/attachments", {
               method:  "POST",
@@ -94,7 +94,7 @@ export default function FileUploadZone({ entityType, entityId, onUploaded }: Pro
             });
             if (!metaRes.ok) {
               const d = await metaRes.json();
-              setError(idx, d.error ?? "Failed to save file metadata");
+              setUploadError(idx, d.error ?? "Failed to save file metadata");
             } else {
               setProgress(idx, 100);
               setTimeout(() => {
@@ -103,22 +103,22 @@ export default function FileUploadZone({ entityType, entityId, onUploaded }: Pro
               }, 800);
             }
           } catch {
-            setError(idx, "Network error saving file metadata");
+            setUploadError(idx, "Network error saving file metadata");
           }
         } else {
-          setError(idx, `Upload failed (HTTP ${xhr.status})`);
+          setUploadError(idx, `Upload failed (HTTP ${xhr.status})`);
         }
         resolve();
       };
 
-      xhr.onerror = () => { setError(idx, "Upload failed — network error"); resolve(); };
+      xhr.onerror = () => { setUploadError(idx, "Upload failed — network error"); resolve(); };
       xhr.send(file);
     });
   }
 
-  async function handleFiles(files: FileList | null) {
-    if (!files || files.length === 0) return;
-    const arr = Array.from(files);
+  async function handleFiles(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
+    const arr  = Array.from(fileList);
     const base = uploads.length;
     setUploads(prev => [...prev, ...arr.map(f => ({ filename: f.name, progress: 0, error: null }))]);
     await Promise.all(arr.map((f, i) => uploadFile(f, base + i)));
@@ -140,10 +140,10 @@ export default function FileUploadZone({ entityType, entityId, onUploaded }: Pro
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
         onClick={() => !busy && inputRef.current?.click()}
-        className={`border-2 border-dashed rounded-xl px-4 py-6 text-center transition-colors cursor-pointer ${
+        className={`border-2 border-dashed rounded-xl px-6 py-8 text-center transition-all cursor-pointer select-none ${
           dragging
-            ? "border-indigo-400 bg-indigo-50"
-            : "border-gray-200 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50/50"
+            ? "border-indigo-500 bg-indigo-50 scale-[1.01]"
+            : "border-indigo-200 bg-indigo-50/40 hover:border-indigo-400 hover:bg-indigo-50"
         }`}
       >
         <input
@@ -154,29 +154,43 @@ export default function FileUploadZone({ entityType, entityId, onUploaded }: Pro
           className="hidden"
           onChange={(e) => handleFiles(e.target.files)}
         />
-        <div className="flex flex-col items-center gap-1.5">
-          <svg className="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-          </svg>
-          <p className="text-sm font-medium text-gray-600">
-            {dragging ? "Drop files here" : "Drop files or click to upload"}
-          </p>
-          <p className="text-xs text-gray-400">Images, PDFs, Office docs, audio &amp; video · max 50 MB each</p>
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+            <svg className="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-indigo-700">
+              {dragging ? "Drop files here" : "Drop files here or click to upload"}
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Images, PDFs, Office docs, audio &amp; video · max 50 MB each
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); !busy && inputRef.current?.click(); }}
+            className="mt-1 px-4 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+            disabled={busy}
+          >
+            Choose Files
+          </button>
         </div>
       </div>
 
       {/* Upload progress rows */}
       {uploads.map((u, i) => (
         <div key={i} className="flex items-center gap-3 px-3 py-2.5 bg-white border border-gray-100 rounded-xl">
-          <span className="text-sm flex-shrink-0">
+          <span className="text-base flex-shrink-0">
             {u.error ? "❌" : u.progress === 100 ? "✅" : "⏳"}
           </span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-700 truncate">{u.filename}</p>
             {u.error ? (
-              <p className="text-xs text-red-500">{u.error}</p>
+              <p className="text-xs text-red-500 mt-0.5">{u.error}</p>
             ) : (
-              <div className="mt-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="mt-1.5 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-indigo-500 rounded-full transition-all duration-300"
                   style={{ width: `${u.progress}%` }}
@@ -184,8 +198,8 @@ export default function FileUploadZone({ entityType, entityId, onUploaded }: Pro
               </div>
             )}
           </div>
-          <span className="text-xs text-gray-400 flex-shrink-0 w-8 text-right">
-            {u.error ? "" : u.progress === 100 ? "" : `${u.progress}%`}
+          <span className="text-xs text-gray-400 flex-shrink-0 w-10 text-right tabular-nums">
+            {!u.error && u.progress < 100 ? `${u.progress}%` : ""}
           </span>
         </div>
       ))}

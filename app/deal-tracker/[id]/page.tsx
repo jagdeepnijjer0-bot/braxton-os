@@ -157,6 +157,9 @@ export default async function DealDetailPage({ params }: Props) {
         />
       </div>
 
+      {/* Files & Attachments — full-width section */}
+      <FileAttachments entityType="deal" entityId={id} />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column: details */}
         <div className="lg:col-span-1 space-y-5">
@@ -244,9 +247,8 @@ export default async function DealDetailPage({ params }: Props) {
           )}
         </div>
 
-        {/* Right column: files + activity timeline */}
+        {/* Right column: activity timeline */}
         <div className="lg:col-span-2 space-y-5">
-          <FileAttachments entityType="deal" entityId={id} />
           <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Activity</h3>
             <DealActivityTimeline

@@ -146,6 +146,9 @@ export default async function ContactDetailPage({ params }: Props) {
         defaultLeadType={contact.lead_type as QualLeadType | null}
       />
 
+      {/* Files & Attachments — full-width section */}
+      <FileAttachments entityType="contact" entityId={id} />
+
       {/* Body: info + timeline */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
         {/* Left: details */}
@@ -203,9 +206,6 @@ export default async function ContactDetailPage({ params }: Props) {
               <p className="text-sm text-amber-900 leading-relaxed whitespace-pre-wrap">{contact.notes}</p>
             </div>
           )}
-
-          {/* Files */}
-          <FileAttachments entityType="contact" entityId={id} />
         </div>
 
         {/* Right: activity */}
