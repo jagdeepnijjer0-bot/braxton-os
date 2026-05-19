@@ -63,11 +63,12 @@ export default async function DashboardPage() {
       .neq("stage", "completed")
       .order("created_at", { ascending: false })
       .limit(6),
-    // Finance MTD
+    // Finance MTD — only need type + amount to compute totals, cap at 500 rows
     supabase
       .from("finance_transactions")
       .select("transaction_type, total_amount")
-      .gte("transaction_date", startOfMonth),
+      .gte("transaction_date", startOfMonth)
+      .limit(500),
     // Overdue tasks: todo/in_progress past due_date
     supabase
       .from("tasks")

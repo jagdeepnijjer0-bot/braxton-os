@@ -41,7 +41,12 @@ export async function GET(req: NextRequest) {
   if (deal)     query = query.eq("linked_deal_id", deal);
   if (project)  query = query.eq("linked_project_id", project);
 
-  if (paginate) query = query.range(offset, offset + limit - 1);
+  if (paginate) {
+    query = query.range(offset, offset + limit - 1);
+  } else {
+    // Always cap non-paginated responses to prevent unbounded fetches
+    query = query.limit(100);
+  }
 
   const { data, count, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

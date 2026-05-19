@@ -25,13 +25,14 @@ export async function GET(req: NextRequest) {
   const status   = searchParams.get("status") ?? "";
   const priority = searchParams.get("priority") ?? "";
   const unread   = searchParams.get("unread") ?? "";
+  const limit    = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "100", 10)));
 
   let query = supabase
     .from("inbox_conversations")
     .select("*")
     .order("latest_message_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
-    .limit(200);
+    .limit(limit);
 
   if (search) {
     const safe = search.replace(/[%_\\]/g, "\\$&");

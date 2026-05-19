@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
 
@@ -18,6 +18,10 @@ interface Props {
   children: React.ReactNode;
   profile:  ShellProfile;
 }
+
+// Memo-wrap so Sidebar/TopBar don't re-render when AppShell's sidebarOpen state changes
+const MemoSidebar = memo(Sidebar);
+const MemoTopBar  = memo(TopBar);
 
 export default function AppShell({ children, profile }: Props) {
   const pathname = usePathname();
@@ -36,6 +40,10 @@ export default function AppShell({ children, profile }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [sidebarOpen]);
 
+  // Stable callbacks so memoised children don't re-render on every AppShell render
+  const openSidebar  = useCallback(() => setSidebarOpen(true),  []);
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+
   // Auth pages render without chrome
   if (AUTH_PATHS.some(p => pathname.startsWith(p))) {
     return <>{children}</>;
@@ -44,24 +52,24 @@ export default function AppShell({ children, profile }: Props) {
   return (
     <>
       {/* Sidebar — fixed on desktop, slide-in on mobile */}
-      <Sidebar
+      <MemoSidebar
         profile={profile}
         isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
+        onClose={closeSidebar}
       />
 
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
           className="sidebar-overlay lg:hidden"
-          onClick={() => setSidebarOpen(false)}
+          onClick={closeSidebar}
           aria-hidden
         />
       )}
 
       {/* Main content — no left margin on mobile, 240px on desktop */}
       <div className="flex-1 min-w-0 lg:ml-[240px]">
-        <TopBar onMenuOpen={() => setSidebarOpen(true)} />
+        <MemoTopBar onMenuOpen={openSidebar} />
         <main className="p-4 sm:p-6">{children}</main>
       </div>
     </>

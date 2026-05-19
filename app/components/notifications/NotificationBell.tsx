@@ -7,14 +7,17 @@ import type { Database } from "@/lib/supabase/types";
 type NotifRow = Database["public"]["Tables"]["notifications"]["Row"];
 
 export default function NotificationBell() {
-  const [open,   setOpen]   = useState(false);
-  const [notifs, setNotifs] = useState<NotifRow[]>([]);
-  const [loading,setLoading]= useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [open,    setOpen]    = useState(false);
+  const [notifs,  setNotifs]  = useState<NotifRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const ref        = useRef<HTMLDivElement>(null);
+  const fetchingRef = useRef(false); // guard against overlapping in-flight requests
 
   const unread = notifs.filter(n => !n.is_read).length;
 
   const load = useCallback(async () => {
+    if (fetchingRef.current) return; // skip if already in-flight
+    fetchingRef.current = true;
     setLoading(true);
     try {
       const res  = await fetch("/api/notifications");
@@ -22,13 +25,14 @@ export default function NotificationBell() {
       setNotifs(Array.isArray(data) ? data : []);
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
   }, []);
 
-  // Load on mount and poll every 60 s
+  // Load once on mount, then poll every 5 minutes (was 60 s)
   useEffect(() => {
     load();
-    const t = setInterval(load, 60000);
+    const t = setInterval(load, 5 * 60 * 1000);
     return () => clearInterval(t);
   }, [load]);
 
@@ -89,7 +93,7 @@ export default function NotificationBell() {
                 </button>
               )}
               <button onClick={load} className="p-1 text-gray-400 hover:text-gray-600" title="Refresh">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={loading ? "animate-spin" : ""}>
                   <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
                   <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
                 </svg>
