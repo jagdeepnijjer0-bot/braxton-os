@@ -131,6 +131,7 @@ async function processMessageEvent(
     const { data: newContacts, error: contactErr } = await supabase
       .from("contacts")
       .insert({
+        name:       `${label} User`,  // NOT NULL — required
         first_name: label,
         last_name:  "User",
         status:     "lead",
@@ -239,6 +240,7 @@ async function processLeadgenEvent(
   const { data: newContacts, error: contactErr } = await supabase
     .from("contacts")
     .insert({
+      name:       "Facebook Lead",  // NOT NULL — required
       first_name: "Facebook",
       last_name:  "Lead",
       status:     "lead",
