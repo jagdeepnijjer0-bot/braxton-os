@@ -49,7 +49,7 @@ ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 -- Only admins and managers can read audit logs
 CREATE POLICY "audit_logs_select" ON audit_logs
   FOR SELECT TO authenticated
-  USING (auth.user_role() IN ('admin', 'manager'));
+  USING (public.current_user_role() IN ('admin', 'manager'));
 
 -- No direct INSERT/UPDATE/DELETE for non-service-role users
 -- The service-role client (lib/audit.ts) bypasses RLS to write logs

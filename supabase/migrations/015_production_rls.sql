@@ -8,11 +8,15 @@
 --   3. Harden file_attachments: DELETE only by uploader or admin
 --   4. Harden storage objects: DELETE only by uploader or admin
 --   5. Ensure all tables require authentication for writes
+--
+-- NOTE: Function is created in public schema (not auth) — Supabase does not
+--       allow creating functions in the auth schema.
 
--- ── 0. Helper: get current user role ─────────────────────────────────────────
-CREATE OR REPLACE FUNCTION auth.user_role()
+-- ── 0. Helper: get current user role (public schema) ─────────────────────────
+CREATE OR REPLACE FUNCTION public.current_user_role()
 RETURNS text
-LANGUAGE sql STABLE
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
 AS $$
   SELECT COALESCE(
     (SELECT role FROM profiles WHERE id = auth.uid()),
@@ -21,7 +25,6 @@ AS $$
 $$;
 
 -- ── 1. Extend profiles.role to support new roles ──────────────────────────────
--- Drop old constraint and add new one with expanded role set
 ALTER TABLE profiles
   DROP CONSTRAINT IF EXISTS profiles_role_check;
 
@@ -61,56 +64,38 @@ CREATE POLICY "tasks_update" ON tasks
   WITH CHECK (true);
 
 -- ── 6. Harden file_attachments ────────────────────────────────────────────────
--- Allow SELECT for all authenticated users (files are business data)
 DROP POLICY IF EXISTS "file_attachments_select" ON file_attachments;
 CREATE POLICY "file_attachments_select" ON file_attachments
   FOR SELECT TO authenticated USING (true);
 
--- Allow INSERT only if uploaded_by matches current user
 DROP POLICY IF EXISTS "file_attachments_insert" ON file_attachments;
 CREATE POLICY "file_attachments_insert" ON file_attachments
   FOR INSERT TO authenticated
   WITH CHECK (uploaded_by = auth.uid());
 
--- DELETE only by original uploader or admin/manager
 DROP POLICY IF EXISTS "file_attachments_delete" ON file_attachments;
 CREATE POLICY "file_attachments_delete" ON file_attachments
   FOR DELETE TO authenticated
   USING (
     uploaded_by = auth.uid()
-    OR auth.user_role() IN ('admin', 'manager')
+    OR public.current_user_role() IN ('admin', 'manager')
   );
 
 -- ── 7. Harden storage.objects for the attachments bucket ─────────────────────
--- Drop existing permissive delete and replace with owner-aware version
 DROP POLICY IF EXISTS "attachments_delete" ON storage.objects;
+DROP POLICY IF EXISTS "attachments_delete_hardened" ON storage.objects;
 
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies
-    WHERE schemaname = 'storage' AND tablename = 'objects'
-    AND policyname = 'attachments_delete_hardened'
-  ) THEN
-    EXECUTE $pol$
-      CREATE POLICY "attachments_delete_hardened" ON storage.objects
-        FOR DELETE TO authenticated
-        USING (
-          bucket_id = 'attachments'
-          AND (
-            owner = auth.uid()::text
-            OR auth.user_role() IN ('admin', 'manager')
-          )
-        )
-    $pol$;
-  END IF;
-END $$;
+CREATE POLICY "attachments_delete_hardened" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (
+    bucket_id = 'attachments'
+    AND (
+      owner = auth.uid()::text
+      OR public.current_user_role() IN ('admin', 'manager')
+    )
+  );
 
--- ── 8. Ensure notifications require auth for INSERT ────────────────────────────
+-- ── 8. Ensure notifications require auth for INSERT ───────────────────────────
 DROP POLICY IF EXISTS "notifications_insert_auth" ON notifications;
 CREATE POLICY "notifications_insert_auth" ON notifications
   FOR INSERT TO authenticated WITH CHECK (true);
-
--- ── 9. Restrict settings reads to admins/managers ────────────────────────────
--- (no settings table yet — this is a placeholder for future)
--- When a settings table is added, apply: USING (auth.user_role() IN ('admin','manager'))
