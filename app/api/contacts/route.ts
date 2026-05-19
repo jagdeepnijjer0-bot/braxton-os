@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
-import { dispatchWebhook } from "@/lib/webhooks/dispatcher";
 import { logAudit } from "@/lib/audit";
+import { emit } from "@/lib/events/emit";
 import type { ContactStatus, LeadType, Database } from "@/lib/supabase/types";
 
 type ContactInsert = Database["public"]["Tables"]["contacts"]["Insert"];
@@ -101,8 +101,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Workflow 1: New CRM contact → n8n
-  await dispatchWebhook("new_contact", {
+  // Workflow: lead.created → n8n → notification + follow-up task
+  void emit("lead.created", {
     contact_id: data.id,
     name:       data.name,
     email:      data.email,
@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
     lead_type:  data.lead_type,
     source:     data.source,
     status:     data.status,
-  });
+  }, { entityType: "contact", entityId: data.id });
 
   const { data: { user } } = await supabase.auth.getUser();
   void logAudit({

@@ -1134,6 +1134,31 @@ export interface Database {
           webhooks_fired?: number;
         };
       } & NoRelationships;
+
+      // ── n8n_settings ────────────────────────────────────────
+      n8n_settings: {
+        Row: {
+          id:           string;
+          enabled:      boolean;
+          base_url:     string | null;
+          event_config: Record<string, { url?: string | null; enabled?: boolean }>;
+          updated_at:   string;
+          updated_by:   string | null;
+        };
+        Insert: {
+          enabled?:      boolean;
+          base_url?:     string | null;
+          event_config?: Record<string, { url?: string | null; enabled?: boolean }>;
+          updated_by?:   string | null;
+        };
+        Update: {
+          enabled?:      boolean;
+          base_url?:     string | null;
+          event_config?: Record<string, { url?: string | null; enabled?: boolean }>;
+          updated_at?:   string;
+          updated_by?:   string | null;
+        };
+      } & NoRelationships;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

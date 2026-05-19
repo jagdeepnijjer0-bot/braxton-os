@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useEffect, type ReactElement } from "react";
+import React, { useState, useEffect, type ReactElement } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { getInitials } from "@/lib/utils";
+import N8nConfig      from "@/app/settings/components/N8nConfig";
+import DeliveryLogs   from "@/app/settings/components/DeliveryLogs";
+import AutomationLogs from "@/app/settings/components/AutomationLogs";
 
 const tabs = ["Profile", "Workspace", "Integrations", "AI Lab", "Notifications", "Billing"];
 
@@ -449,42 +452,83 @@ function StatusDot({ label, ok, hint }: { label: string; ok: boolean; hint: stri
 
 // ── Integrations Section ──────────────────────────────────────────────────────
 function IntegrationsSection() {
-  const [metaOpen, setMetaOpen] = useState(true);
-  const otherIntegrations = [
-    { name: "Gmail",          desc: "Sync emails",               connected: false, icon: "G" },
-    { name: "Google Calendar",desc: "Sync meetings",             connected: false, icon: "C" },
-    { name: "Slack",          desc: "Get notifications",         connected: false, icon: "S" },
-    { name: "Stripe",         desc: "Track payments",            connected: false, icon: "St" },
-    { name: "Zapier",         desc: "Connect thousands of apps", connected: false, icon: "Z" },
-  ];
-  return (
-    <div className="space-y-5">
-      {/* Meta integration — expanded by default */}
-      <div>
-        <button
-          onClick={() => setMetaOpen(v => !v)}
-          className="w-full flex items-center justify-between mb-3 text-left"
-        >
-          <span className="text-sm font-semibold text-gray-700">Meta / Social (Instagram &amp; Facebook)</span>
-          <span className="text-gray-400 text-xs">{metaOpen ? "▲ Hide" : "▼ Show"}</span>
-        </button>
-        {metaOpen && <MetaIntegrationSection />}
-      </div>
+  const [metaOpen,      setMetaOpen]      = useState(false);
+  const [n8nOpen,       setN8nOpen]       = useState(true);
+  const [logsOpen,      setLogsOpen]      = useState(false);
+  const [autoLogsOpen,  setAutoLogsOpen]  = useState(false);
 
-      {/* Other integrations */}
+  const COMING_SOON = [
+    { name: "Gmail",           desc: "Sync emails + auto-CRM logging",   icon: "G",  future: "gmail" },
+    { name: "WhatsApp",        desc: "Receive & send WhatsApp messages",  icon: "W",  future: "whatsapp" },
+    { name: "Google Calendar", desc: "Sync meetings & deal deadlines",    icon: "C",  future: "gcal" },
+    { name: "Slack",           desc: "Deal alerts & team notifications",  icon: "S",  future: "slack" },
+    { name: "Stripe",          desc: "Sync payments to finance tracker",  icon: "St", future: "stripe" },
+  ];
+
+  function Panel({ label, open, onToggle, children }: { label: string; open: boolean; onToggle: () => void; children: React.ReactNode }) {
+    return (
+      <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+        <button
+          onClick={onToggle}
+          className="w-full flex items-center justify-between px-5 py-4 bg-white hover:bg-gray-50/50 transition-colors text-left"
+        >
+          <span className="text-sm font-semibold text-gray-800">{label}</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}>
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+        {open && <div className="px-5 pb-5 pt-1 bg-white border-t border-gray-50">{children}</div>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* n8n Automation */}
+      <Panel label="⚡ n8n Automation — Event System" open={n8nOpen} onToggle={() => setN8nOpen(v => !v)}>
+        <div className="pt-4">
+          <N8nConfig />
+        </div>
+      </Panel>
+
+      {/* Delivery Logs */}
+      <Panel label="📬 Webhook Delivery Logs" open={logsOpen} onToggle={() => setLogsOpen(v => !v)}>
+        <div className="pt-4">
+          <DeliveryLogs />
+        </div>
+      </Panel>
+
+      {/* Automation Logs */}
+      <Panel label="📋 Automation Event Logs" open={autoLogsOpen} onToggle={() => setAutoLogsOpen(v => !v)}>
+        <div className="pt-4">
+          <AutomationLogs />
+        </div>
+      </Panel>
+
+      {/* Meta integration */}
+      <Panel label="📱 Meta / Social (Instagram & Facebook)" open={metaOpen} onToggle={() => setMetaOpen(v => !v)}>
+        <div className="pt-4">
+          <MetaIntegrationSection />
+        </div>
+      </Panel>
+
+      {/* Coming soon */}
       <div>
-        <p className="text-sm font-semibold text-gray-700 mb-3">Other Integrations</p>
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">Coming Soon</p>
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
           <div className="divide-y divide-gray-50">
-            {otherIntegrations.map(i => (
+            {COMING_SOON.map(i => (
               <div key={i.name} className="flex items-center justify-between px-5 py-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center font-bold text-gray-600 text-sm">{i.icon}</div>
-                  <div><p className="text-sm font-medium text-gray-900">{i.name}</p><p className="text-xs text-gray-500">{i.desc}</p></div>
+                  <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center font-bold text-gray-500 text-sm">{i.icon}</div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{i.name}</p>
+                    <p className="text-xs text-gray-400">{i.desc}</p>
+                  </div>
                 </div>
-                <button className="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors border border-gray-200 text-gray-600 hover:bg-gray-50">
+                <span className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-400">
                   Coming soon
-                </button>
+                </span>
               </div>
             ))}
           </div>
