@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useToast } from "@/app/components/ui/Toast";
 
 interface FileAttachment {
   id:          string;
@@ -35,12 +36,15 @@ function formatBytes(bytes: number): string {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(iso).toLocaleDateString("en-GB", {
+    day: "numeric", month: "short", year: "numeric",
+  });
 }
 
 export default function FileItem({ file, onDeleted }: Props) {
-  const [deleting, setDeleting] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const toast = useToast();
+  const [deleting,       setDeleting]       = useState(false);
+  const [confirmDelete,  setConfirmDelete]  = useState(false);
 
   const isImage = file.mime_type.startsWith("image/");
 
@@ -48,10 +52,14 @@ export default function FileItem({ file, onDeleted }: Props) {
     setDeleting(true);
     try {
       const res = await fetch(`/api/attachments/${file.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error((await res.json()).error ?? "Delete failed");
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error ?? `Delete failed (${res.status})`);
+      }
+      toast.success("File deleted", file.filename);
       onDeleted(file.id);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Delete failed");
+      toast.error("Delete failed", e instanceof Error ? e.message : "Could not delete file");
       setDeleting(false);
       setConfirmDelete(false);
     }
@@ -59,8 +67,8 @@ export default function FileItem({ file, onDeleted }: Props) {
 
   return (
     <div className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-100 rounded-xl hover:bg-gray-100 transition-colors group">
-      {/* Icon / thumbnail */}
-      <div className="flex-shrink-0 w-9 h-9 flex items-center justify-center bg-white border border-gray-200 rounded-lg text-lg">
+      {/* Icon */}
+      <div className="flex-shrink-0 w-9 h-9 flex items-center justify-center bg-white border border-gray-200 rounded-lg text-base">
         {fileIcon(file.mime_type)}
       </div>
 
@@ -69,12 +77,12 @@ export default function FileItem({ file, onDeleted }: Props) {
         <p className="text-sm font-medium text-gray-800 truncate">{file.filename}</p>
         <p className="text-xs text-gray-400">
           {formatBytes(file.file_size)} · {formatDate(file.created_at)}
-          {file.label && <span className="ml-1 text-indigo-400">· {file.label}</span>}
+          {file.label && <span className="ml-1 text-indigo-500">· {file.label}</span>}
         </p>
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
         {/* Download */}
         <a
           href={`/api/attachments/${file.id}/download`}
@@ -82,20 +90,22 @@ export default function FileItem({ file, onDeleted }: Props) {
           rel="noopener noreferrer"
           className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
           title="Download"
+          onClick={e => e.stopPropagation()}
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 4v11" />
           </svg>
         </a>
 
-        {/* Preview (images only) */}
+        {/* Preview — images only */}
         {isImage && (
           <a
             href={`/api/attachments/${file.id}/download`}
             target="_blank"
             rel="noopener noreferrer"
             className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-            title="Open preview"
+            title="Preview"
+            onClick={e => e.stopPropagation()}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -104,7 +114,7 @@ export default function FileItem({ file, onDeleted }: Props) {
           </a>
         )}
 
-        {/* Delete */}
+        {/* Delete with confirm */}
         {confirmDelete ? (
           <div className="flex items-center gap-1">
             <button
@@ -116,7 +126,7 @@ export default function FileItem({ file, onDeleted }: Props) {
             </button>
             <button
               onClick={() => setConfirmDelete(false)}
-              className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+              className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700"
             >
               Cancel
             </button>

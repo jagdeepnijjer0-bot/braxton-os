@@ -7,36 +7,39 @@ import { LEAD_TYPES, CONTACT_STATUSES } from "@/lib/constants/crm";
 import LeadTypeBadge from "@/app/components/crm/LeadTypeBadge";
 import StatusBadge from "@/app/components/crm/StatusBadge";
 import FollowUpBadge from "@/app/components/crm/FollowUpBadge";
-import type { Database } from "@/lib/supabase/types";
 import AiScoreBadge from "@/app/components/ai/AiScoreBadge";
+import { SkeletonTableRow, SkeletonStatCard } from "@/app/components/ui/Skeleton";
+import Pagination from "@/app/components/ui/Pagination";
+import { useToast } from "@/app/components/ui/Toast";
+import type { Database } from "@/lib/supabase/types";
 
 type Contact = Database["public"]["Tables"]["contacts"]["Row"];
+
+const LIMIT = 25;
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 function displayName(c: Contact): string {
   if (c.name) return c.name;
   const full = [c.first_name, c.last_name].filter(Boolean).join(" ").trim();
   if (full) return full;
-  if (c.company) return c.company;
-  if (c.email)   return c.email;
-  if (c.phone)   return c.phone ?? "";
-  return "Unknown Contact";
+  return c.company ?? c.email ?? c.phone ?? "Unknown Contact";
 }
 
 function initials(name: string | null | undefined) {
   if (!name) return "?";
-  return name.split(" ").slice(0, 2).map((n) => n[0]?.toUpperCase() ?? "").join("");
+  return name.split(" ").slice(0, 2).map(n => n[0]?.toUpperCase() ?? "").join("");
 }
 
 function timeAgo(iso: string | null) {
   if (!iso) return null;
-  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
   if (d === 0) return "Today";
   if (d === 1) return "Yesterday";
   if (d < 7)   return `${d}d ago`;
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
-// Stable avatar colour from name
 const AVATAR_COLORS = [
   "bg-violet-100 text-violet-700",
   "bg-blue-100 text-blue-700",
@@ -54,92 +57,159 @@ function avatarColor(name: string | null | undefined) {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
+// ── Component ──────────────────────────────────────────────────────────────────
+
 export default function CRMPage() {
   const router = useRouter();
-  const [contacts, setContacts]   = useState<Contact[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [search, setSearch]       = useState("");
-  const [statusFilter, setStatus] = useState("");
-  const [leadFilter, setLead]     = useState("");
-  const [overdueOnly, setOverdue] = useState(false);
-  const [deleting, setDeleting]   = useState<string | null>(null);
+  const toast  = useToast();
 
-  const fetchContacts = useCallback(async () => {
+  const [contacts,      setContacts]      = useState<Contact[]>([]);
+  const [total,         setTotal]         = useState(0);
+  const [page,          setPage]          = useState(1);
+  const [loading,       setLoading]       = useState(true);
+  const [fetchError,    setFetchError]    = useState<string | null>(null);
+  const [search,        setSearch]        = useState("");
+  const [statusFilter,  setStatusFilter]  = useState("");
+  const [leadFilter,    setLeadFilter]    = useState("");
+  const [overdueOnly,   setOverdueOnly]   = useState(false);
+  const [deleting,      setDeleting]      = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  const fetchContacts = useCallback(async (p = page) => {
     setLoading(true);
-    const p = new URLSearchParams();
-    if (search)      p.set("search",    search);
-    if (statusFilter) p.set("status",   statusFilter);
-    if (leadFilter)  p.set("lead_type", leadFilter);
-    if (overdueOnly) p.set("overdue",   "true");
-    const res = await fetch(`/api/contacts?${p}`);
-    if (res.ok) setContacts(await res.json());
-    setLoading(false);
+    setFetchError(null);
+    try {
+      const params = new URLSearchParams({ page: String(p), limit: String(LIMIT) });
+      if (search)       params.set("search",    search);
+      if (statusFilter) params.set("status",    statusFilter);
+      if (leadFilter)   params.set("lead_type", leadFilter);
+      if (overdueOnly)  params.set("overdue",   "true");
+
+      const res = await fetch(`/api/contacts?${params}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? `Server error ${res.status}`);
+      }
+      const json = await res.json();
+      setContacts(json.data  ?? []);
+      setTotal(json.total ?? 0);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to load contacts";
+      setFetchError(msg);
+      toast.error("Failed to load contacts", msg);
+    } finally {
+      setLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, statusFilter, leadFilter, overdueOnly, page]);
+
+  // Debounce filter changes, reset to page 1
+  useEffect(() => {
+    setPage(1);
+    const t = setTimeout(() => fetchContacts(1), 280);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, statusFilter, leadFilter, overdueOnly]);
 
+  // Page change without resetting filters
   useEffect(() => {
-    const t = setTimeout(fetchContacts, 280);
-    return () => clearTimeout(t);
-  }, [fetchContacts]);
+    fetchContacts(page);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
-  async function deleteContact(id: string, name: string) {
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
-    setDeleting(id);
-    await fetch(`/api/contacts/${id}`, { method: "DELETE" });
-    setContacts((prev) => prev.filter((c) => c.id !== id));
-    setDeleting(null);
+  function handlePageChange(p: number) {
+    setPage(p);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  const overdueCount = contacts.filter((c) => {
+  async function handleDelete(id: string, name: string) {
+    if (confirmDelete !== id) {
+      setConfirmDelete(id);
+      return;
+    }
+    setConfirmDelete(null);
+    setDeleting(id);
+    try {
+      const res = await fetch(`/api/contacts/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? `Delete failed (${res.status})`);
+      }
+      setContacts(prev => prev.filter(c => c.id !== id));
+      setTotal(prev => prev - 1);
+      toast.success("Contact deleted", `"${name}" has been removed.`);
+    } catch (e) {
+      toast.error("Delete failed", e instanceof Error ? e.message : String(e));
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  function clearFilters() {
+    setSearch("");
+    setStatusFilter("");
+    setLeadFilter("");
+    setOverdueOnly(false);
+    setPage(1);
+  }
+
+  const overdueCount = contacts.filter(c => {
     if (!c.follow_up_date) return false;
-    const t = new Date(); t.setHours(0,0,0,0);
+    const t = new Date(); t.setHours(0, 0, 0, 0);
     return new Date(c.follow_up_date) <= t;
   }).length;
 
-  const hasFilters = search || statusFilter || leadFilter || overdueOnly;
+  const hasFilters = !!(search || statusFilter || leadFilter || overdueOnly);
 
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
-      {/* Stats row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: "Total Contacts", value: contacts.length, icon: "👥", accent: "text-gray-900" },
-          { label: "Follow-ups Due", value: overdueCount, icon: "⏰", accent: overdueCount > 0 ? "text-red-600" : "text-gray-900", ring: overdueCount > 0 },
-          { label: "Closed Won",     value: contacts.filter((c) => c.status === "closed_won").length, icon: "🏆", accent: "text-green-700" },
-          { label: "New This Week",  value: contacts.filter((c) => Date.now() - new Date(c.created_at).getTime() < 7*86400000).length, icon: "✨", accent: "text-indigo-700" },
-        ].map((s) => (
-          <div key={s.label} className={`bg-white rounded-2xl border p-5 shadow-sm ${s.ring ? "border-red-200" : "border-gray-100"}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-lg">{s.icon}</span>
-            </div>
-            <p className={`text-2xl font-bold ${s.accent}`}>{loading ? "—" : s.value}</p>
-            <p className="text-xs text-gray-500 font-medium mt-0.5">{s.label}</p>
-          </div>
-        ))}
+    <div className="space-y-5">
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {loading && contacts.length === 0 ? (
+          <>
+            {[0,1,2,3].map(i => <SkeletonStatCard key={i} />)}
+          </>
+        ) : (
+          <>
+            {[
+              { label: "Total Contacts", value: total,             icon: "👥", accent: "text-gray-900" },
+              { label: "Follow-ups Due", value: overdueCount,      icon: "⏰", accent: overdueCount > 0 ? "text-red-600" : "text-gray-900", ring: overdueCount > 0 },
+              { label: "Closed Won",     value: contacts.filter(c => c.status === "closed_won").length, icon: "🏆", accent: "text-emerald-700" },
+              { label: "New This Week",  value: contacts.filter(c => Date.now() - new Date(c.created_at).getTime() < 7*86_400_000).length, icon: "✨", accent: "text-indigo-700" },
+            ].map(s => (
+              <div key={s.label} className={`bg-white rounded-2xl border p-4 sm:p-5 shadow-sm ${s.ring ? "border-red-200" : "border-gray-100"}`}>
+                <span className="text-xl">{s.icon}</span>
+                <p className={`text-2xl font-bold mt-2 ${s.accent}`}>{s.value}</p>
+                <p className="text-xs text-gray-500 font-medium mt-0.5">{s.label}</p>
+              </div>
+            ))}
+          </>
+        )}
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2.5">
         <div className="flex flex-col sm:flex-row gap-2">
           {/* Search */}
           <div className="relative flex-1">
-            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search contacts by name, email, company..."
-              className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder-gray-400"
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search by name, email, company..."
+              className="w-full pl-10 pr-9 py-2.5 text-sm bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder-gray-400"
             />
             {search && (
-              <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             )}
           </div>
-
-          {/* Add button */}
           <Link
             href="/crm/new"
             className="flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 active:scale-95 transition-all shadow-sm whitespace-nowrap"
@@ -149,57 +219,75 @@ export default function CRMPage() {
           </Link>
         </div>
 
-        {/* Filter row */}
+        {/* Filters */}
         <div className="flex flex-wrap gap-2 items-center">
           <select
             value={leadFilter}
-            onChange={(e) => setLead(e.target.value)}
+            onChange={e => setLeadFilter(e.target.value)}
             className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="">All Lead Types</option>
-            {LEAD_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            {LEAD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
-
           <select
             value={statusFilter}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={e => setStatusFilter(e.target.value)}
             className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="">All Statuses</option>
-            {CONTACT_STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            {CONTACT_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
-
           <button
-            onClick={() => setOverdue((v) => !v)}
+            onClick={() => setOverdueOnly(v => !v)}
             className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border shadow-sm transition-all ${
-              overdueOnly
-                ? "bg-red-50 text-red-700 border-red-300"
-                : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+              overdueOnly ? "bg-red-50 text-red-700 border-red-300" : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
             }`}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            Overdue only
+            Overdue
           </button>
-
           {hasFilters && (
-            <button
-              onClick={() => { setSearch(""); setStatus(""); setLead(""); setOverdue(false); }}
-              className="text-xs text-gray-400 hover:text-indigo-600 px-2 py-2 transition-colors"
-            >
+            <button onClick={clearFilters} className="text-xs text-gray-400 hover:text-indigo-600 px-2 py-2 transition-colors">
               Clear filters
             </button>
           )}
         </div>
       </div>
 
-      {/* Table card */}
+      {/* Table */}
       <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="py-20 flex flex-col items-center gap-3 text-gray-400">
-            <div className="w-6 h-6 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin" />
-            <span className="text-sm">Loading contacts...</span>
+
+        {/* Error state */}
+        {fetchError && !loading && (
+          <div className="m-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+              <p className="text-sm text-red-700">{fetchError}</p>
+            </div>
+            <button
+              onClick={() => fetchContacts(page)}
+              className="flex-shrink-0 px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-100 rounded-lg hover:bg-red-200 transition-colors"
+            >
+              Retry
+            </button>
           </div>
-        ) : contacts.length === 0 ? (
+        )}
+
+        {/* Skeleton loading */}
+        {loading ? (
+          <div>
+            {/* Hidden header placeholder */}
+            <div className="hidden md:flex gap-4 px-5 py-3 bg-gray-50/70 border-b border-gray-100">
+              {["Contact","Lead Type","Status","Follow-up","Last Contacted",""].map((h,i) => (
+                <div key={i} className={`text-xs font-semibold text-gray-400 uppercase tracking-wider ${i===0?"flex-[2]":i===5?"w-16":"flex-1"}`}>{h}</div>
+              ))}
+            </div>
+            {[...Array(8)].map((_, i) => <SkeletonTableRow key={i} cols={5} />)}
+          </div>
+        ) : contacts.length === 0 && !fetchError ? (
+          /* Empty state */
           <div className="py-20 flex flex-col items-center gap-3">
             <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center text-2xl">
               {hasFilters ? "🔍" : "👥"}
@@ -210,15 +298,19 @@ export default function CRMPage() {
             <p className="text-xs text-gray-400">
               {hasFilters ? "Try adjusting your search or filters" : "Add your first contact to get started"}
             </p>
-            {!hasFilters && (
+            {hasFilters ? (
+              <button onClick={clearFilters} className="mt-2 px-4 py-2 border border-gray-200 text-sm text-gray-600 rounded-lg hover:bg-gray-50 transition-colors">
+                Clear filters
+              </button>
+            ) : (
               <Link href="/crm/new" className="mt-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
                 Add Contact
               </Link>
             )}
           </div>
-        ) : (
+        ) : !fetchError ? (
           <>
-            {/* Table header */}
+            {/* Table header — desktop */}
             <div className="hidden md:grid grid-cols-[2fr_1.5fr_1.5fr_1.2fr_1.2fr_auto] gap-4 px-5 py-3 bg-gray-50/70 border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase tracking-wider">
               <span>Contact</span>
               <span>Lead Type</span>
@@ -230,13 +322,14 @@ export default function CRMPage() {
 
             {/* Rows */}
             <div className="divide-y divide-gray-50">
-              {contacts.map((c) => (
+              {contacts.map(c => (
                 <div
                   key={c.id}
                   onClick={() => router.push(`/crm/${c.id}`)}
                   className="group cursor-pointer hover:bg-indigo-50/30 transition-colors"
                 >
-                  <div className="grid grid-cols-1 md:grid-cols-[2fr_1.5fr_1.5fr_1.2fr_1.2fr_auto] gap-2 md:gap-4 items-center px-5 py-4">
+                  {/* Desktop grid row */}
+                  <div className="hidden md:grid grid-cols-[2fr_1.5fr_1.5fr_1.2fr_1.2fr_auto] gap-4 items-center px-5 py-4">
                     {/* Contact */}
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={`w-9 h-9 rounded-full text-xs font-bold flex items-center justify-center flex-shrink-0 ${avatarColor(displayName(c))}`}>
@@ -244,7 +337,9 @@ export default function CRMPage() {
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-indigo-700 transition-colors">{displayName(c)}</p>
+                          <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-indigo-700 transition-colors">
+                            {displayName(c)}
+                          </p>
                           {c.ai_score_label && (
                             <AiScoreBadge score={c.ai_score} label={c.ai_score_label} compact />
                           )}
@@ -254,39 +349,22 @@ export default function CRMPage() {
                         </p>
                       </div>
                     </div>
-
-                    {/* Lead type */}
-                    <div className="flex items-center">
-                      <LeadTypeBadge value={c.lead_type} />
+                    <div><LeadTypeBadge value={c.lead_type} /></div>
+                    <div><StatusBadge value={c.status} /></div>
+                    <div><FollowUpBadge date={c.follow_up_date} /></div>
+                    <div>
+                      {timeAgo(c.last_contacted)
+                        ? <span className="text-xs text-gray-500">{timeAgo(c.last_contacted)}</span>
+                        : <span className="text-xs text-gray-300">Never</span>}
                     </div>
-
-                    {/* Status */}
-                    <div className="flex items-center">
-                      <StatusBadge value={c.status} />
-                    </div>
-
-                    {/* Follow-up */}
-                    <div className="flex items-center">
-                      <FollowUpBadge date={c.follow_up_date} />
-                    </div>
-
-                    {/* Last contacted */}
-                    <div className="flex items-center">
-                      {timeAgo(c.last_contacted) ? (
-                        <span className="text-xs text-gray-500">{timeAgo(c.last_contacted)}</span>
-                      ) : (
-                        <span className="text-xs text-gray-300">Never</span>
-                      )}
-                    </div>
-
                     {/* Actions */}
                     <div
                       className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={e => e.stopPropagation()}
                     >
                       <Link
                         href={`/crm/${c.id}/edit`}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-100 transition-colors"
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
                         title="Edit"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -294,32 +372,69 @@ export default function CRMPage() {
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                         </svg>
                       </Link>
-                      <button
-                        onClick={() => deleteContact(c.id, displayName(c))}
-                        disabled={deleting === c.id}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40"
-                        title="Delete"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="3 6 5 6 21 6"/>
-                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                          <path d="M10 11v6M14 11v6"/>
-                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                        </svg>
-                      </button>
+                      {confirmDelete === c.id ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleDelete(c.id, displayName(c))}
+                            disabled={deleting === c.id}
+                            className="px-2 py-1 text-xs font-semibold bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 transition-colors"
+                          >
+                            {deleting === c.id ? "…" : "Delete"}
+                          </button>
+                          <button
+                            onClick={() => setConfirmDelete(null)}
+                            className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleDelete(c.id, displayName(c))}
+                          disabled={deleting === c.id}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
+                          title="Delete"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                            <path d="M10 11v6M14 11v6"/>
+                            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                          </svg>
+                        </button>
+                      )}
                     </div>
+                  </div>
+
+                  {/* Mobile card row */}
+                  <div className="md:hidden px-4 py-3 flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full text-xs font-bold flex items-center justify-center flex-shrink-0 ${avatarColor(displayName(c))}`}>
+                      {initials(displayName(c))}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-indigo-700">{displayName(c)}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <StatusBadge value={c.status} />
+                        {c.lead_type && <LeadTypeBadge value={c.lead_type} />}
+                      </div>
+                    </div>
+                    <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <polyline points="9 18 15 12 9 6"/>
+                    </svg>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Footer */}
-            <div className="px-5 py-3 bg-gray-50/50 border-t border-gray-100 text-xs text-gray-400">
-              {contacts.length} contact{contacts.length !== 1 ? "s" : ""}
-              {hasFilters && " (filtered)"}
-            </div>
+            {/* Pagination footer */}
+            <Pagination
+              page={page}
+              total={total}
+              limit={LIMIT}
+              onChange={handlePageChange}
+            />
           </>
-        )}
+        ) : null}
       </div>
     </div>
   );

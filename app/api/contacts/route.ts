@@ -31,16 +31,22 @@ function sanitize(body: Record<string, unknown>): Partial<ContactInsert> {
 
 export async function GET(req: NextRequest) {
   const supabase = await createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { searchParams } = new URL(req.url);
 
   const search    = searchParams.get("search")?.trim() ?? "";
   const status    = searchParams.get("status") as ContactStatus | null;
   const lead_type = searchParams.get("lead_type") as LeadType | null;
   const overdue   = searchParams.get("overdue") === "true";
+  const page      = Math.max(1, parseInt(searchParams.get("page")  ?? "1",  10));
+  const limit     = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "25", 10)));
+  const offset    = (page - 1) * limit;
 
   let query = supabase
     .from("contacts")
-    .select("*")
+    .select("*", { count: "exact" })
     .order("created_at", { ascending: false });
 
   if (search) {
@@ -56,12 +62,15 @@ export async function GET(req: NextRequest) {
     query = query.lte("follow_up_date", today).not("follow_up_date", "is", null);
   }
 
-  const { data, error } = await query;
+  // Apply pagination range
+  query = query.range(offset, offset + limit - 1);
+
+  const { data, count, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json(data ?? []);
+  return NextResponse.json({ data: data ?? [], total: count ?? 0, page, limit });
 }
 
 export async function POST(req: NextRequest) {

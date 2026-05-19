@@ -984,6 +984,29 @@ export interface Database {
         };
       } & NoRelationships;
 
+      // ── audit_logs ────────────────────────────────────────
+      audit_logs: {
+        Row: {
+          id:          string;
+          created_at:  string;
+          user_id:     string | null;
+          action:      string;
+          entity_type: string;
+          entity_id:   string;
+          changes:     Record<string, [unknown, unknown]> | null;
+          metadata:    Record<string, unknown> | null;
+        };
+        Insert: {
+          user_id?:    string | null;
+          action:      string;
+          entity_type: string;
+          entity_id:   string;
+          changes?:    Record<string, [unknown, unknown]> | null;
+          metadata?:   Record<string, unknown> | null;
+        };
+        Update: Record<string, never>; // append-only
+      } & NoRelationships;
+
       // ── file_attachments ──────────────────────────────────
       file_attachments: {
         Row: {
