@@ -1,5 +1,3 @@
-import "server-only";
-
 export const BUCKET_NAME    = "attachments";
 export const MAX_FILE_SIZE  = 52_428_800; // 50 MB
 
