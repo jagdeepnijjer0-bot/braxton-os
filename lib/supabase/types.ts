@@ -1128,7 +1128,11 @@ export interface Database {
           status?:         "ok" | "partial" | "failed";
           error_message?:  string | null;
         };
-        Update: Record<string, never>; // append-only
+        Update: {
+          status?:         "ok" | "partial" | "failed";
+          error_message?:  string | null;
+          webhooks_fired?: number;
+        };
       } & NoRelationships;
     };
     Views: Record<string, never>;
