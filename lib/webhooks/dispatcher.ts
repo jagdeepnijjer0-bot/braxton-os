@@ -174,27 +174,18 @@ async function updateDeliveryLog(
   }
 }
 
-// ─── Outbound dispatcher ──────────────────────────────────────────────────────
+// ─── Core HTTP delivery (shared by dispatch and retry) ───────────────────────
 
-export async function dispatchWebhook(
-  event: WebhookEvent,
-  data: Record<string, unknown>,
-): Promise<void> {
-  const settings = await getN8nSettings();
-  if (!isEnabled(settings)) return;
+interface DeliveryResult {
+  finalStatus:   "success" | "failed";
+  attempts:      number;
+  httpStatus:    number | null;
+  responseMs:    number | null;
+  errorMessage:  string | null;
+  responseBody:  string | null;
+}
 
-  const url = resolveUrl(event, settings);
-  if (!url) return;
-
-  const body = JSON.stringify({
-    event,
-    timestamp: Date.now(),
-    source: "braxton-os",
-    data,
-  });
-
-  const logId = await createDeliveryLog(event, url, body);
-
+async function executeDelivery(url: string, body: string, event: WebhookEvent): Promise<DeliveryResult> {
   const MAX_ATTEMPTS = 3;
   const RETRY_DELAYS = [0, 1000, 2000];
 
@@ -230,7 +221,6 @@ export async function dispatchWebhook(
       lastResponseMs = Date.now() - start;
       lastHttpStatus = response.status;
 
-      // Always capture response body (truncated) for debugging 404s and error messages
       try {
         const raw = await response.text();
         lastResponseBody = raw.length > 2000 ? raw.slice(0, 2000) + "…" : raw;
@@ -255,9 +245,76 @@ export async function dispatchWebhook(
     }
   }
 
+  return { finalStatus, attempts, httpStatus: lastHttpStatus, responseMs: lastResponseMs, errorMessage: lastError, responseBody: lastResponseBody };
+}
+
+// ─── Outbound dispatcher ──────────────────────────────────────────────────────
+
+export async function dispatchWebhook(
+  event: WebhookEvent,
+  data: Record<string, unknown>,
+): Promise<void> {
+  const settings = await getN8nSettings();
+  if (!isEnabled(settings)) return;
+
+  const url = resolveUrl(event, settings);
+  if (!url) return;
+
+  const body = JSON.stringify({
+    event,
+    timestamp: Date.now(),
+    source: "braxton-os",
+    data,
+  });
+
+  const logId = await createDeliveryLog(event, url, body);
+
+  const result = await executeDelivery(url, body, event);
+
+  // await — not void — so the update completes before the serverless function returns
   if (logId) {
-    void updateDeliveryLog(logId, finalStatus, attempts, lastHttpStatus, lastResponseMs, lastError, lastResponseBody);
+    await updateDeliveryLog(logId, result.finalStatus, result.attempts, result.httpStatus, result.responseMs, result.errorMessage, result.responseBody);
   }
+}
+
+/**
+ * Retry a specific delivery log by ID.
+ * Re-uses the stored URL and request body — does NOT create a new log row.
+ * Returns the updated result so callers can report it.
+ */
+export async function retryDelivery(logId: string): Promise<{ ok: boolean; httpStatus: number | null; error: string | null }> {
+  const admin = createAdminClient();
+
+  const { data: log } = await admin
+    .from("webhook_delivery_logs")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .select("id, event, url, request_body, attempts" as any)
+    .eq("id", logId)
+    .single();
+
+  if (!log) return { ok: false, httpStatus: null, error: "Log not found" };
+
+  const row = log as unknown as Record<string, unknown>;
+  const url  = row.url as string;
+  const event = row.event as WebhookEvent;
+  // Re-serialize the stored request body so the HMAC is computed correctly
+  const body = JSON.stringify(row.request_body);
+  const prevAttempts = (row.attempts as number) ?? 0;
+
+  const result = await executeDelivery(url, body, event);
+
+  // Update the ORIGINAL log row — not a new one
+  await updateDeliveryLog(
+    logId,
+    result.finalStatus,
+    prevAttempts + result.attempts,
+    result.httpStatus,
+    result.responseMs,
+    result.errorMessage,
+    result.responseBody,
+  );
+
+  return { ok: result.finalStatus === "success", httpStatus: result.httpStatus, error: result.errorMessage };
 }
 
 // ─── Inbound verification ─────────────────────────────────────────────────────
