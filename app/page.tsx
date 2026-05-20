@@ -1,4 +1,3 @@
-import { unstable_cache } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
 import KpiCard from "./components/dashboard/KpiCard";
 import PipelineBar from "./components/dashboard/PipelineBar";
@@ -9,6 +8,7 @@ import UpcomingEvents from "./components/dashboard/UpcomingEvents";
 import ActivityFeed, { type ActivityItem } from "./components/dashboard/ActivityFeed";
 import NotificationsList from "./components/dashboard/NotificationsList";
 import DashboardRefresh from "./components/dashboard/DashboardRefresh";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -18,17 +18,23 @@ function fmt(n: number) {
   return "£" + n.toLocaleString("en-GB");
 }
 
-// ─── Cached data fetcher — results reused for 60 s per user ─────────────────
-// unstable_cache keys by [userId, monthKey] so each user sees their own data
-// and the cache naturally rotates on month change.
+// ─── Module-level result cache ───────────────────────────────────────────────
+// Stores plain serialisable data only — no cookies, no Supabase clients.
+// Keyed by userId + month so each user gets their own slice and it rotates
+// automatically each month. TTL: 60 s (same strategy as notifications throttle).
 
-async function fetchDashboardData(userId: string, monthKey: string) {
-  const supabase = await createServerClient();
+type DashData = Awaited<ReturnType<typeof runQueries>>;
+const _dashCache = new Map<string, { data: DashData; ts: number }>();
+const CACHE_TTL  = 60_000;
 
-  const now              = new Date();
+// ─── Pure query runner — receives an already-authenticated client ─────────────
+// createServerClient() (which reads cookies) is called by the page BEFORE this
+// function. Nothing inside here touches cookies or auth headers.
+
+async function runQueries(supabase: SupabaseClient, now: Date) {
   const startOfMonth     = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const thirtyDaysAgo    = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const sevenDaysFromNow = new Date(now.getTime() + 7  * 24 * 60 * 60 * 1000).toISOString();
+  const sevenDaysFromNow = new Date(now.getTime() +  7 * 24 * 60 * 60 * 1000).toISOString();
 
   const [
     contactsTotalRes, contactsNewRes, dealsRes, projectsRes, financeRes,
@@ -51,45 +57,39 @@ async function fetchDashboardData(userId: string, monthKey: string) {
     supabase.from("deal_activities").select("id, created_at, type, body, deal_id").order("created_at", { ascending: false }).limit(8),
   ]);
 
-  // Suppress unused-variable warning — monthKey is only used as a cache-key discriminator
-  void monthKey;
-
   return {
-    contactsTotal: contactsTotalRes.count ?? 0,
-    contactsNew:   contactsNewRes.count   ?? 0,
-    deals:         dealsRes.data          ?? [],
-    projects:      projectsRes.data       ?? [],
-    finTxns:       financeRes.data        ?? [],
-    overdueTasks:  overdueTasksRes.count  ?? 0,
-    unreadInbox:   unreadInboxRes.count   ?? 0,
+    contactsTotal:   contactsTotalRes.count   ?? 0,
+    contactsNew:     contactsNewRes.count     ?? 0,
+    deals:           dealsRes.data            ?? [],
+    projects:        projectsRes.data         ?? [],
+    finTxns:         financeRes.data          ?? [],
+    overdueTasks:    overdueTasksRes.count    ?? 0,
+    unreadInbox:     unreadInboxRes.count     ?? 0,
     outreachReplies: outreachRepliesRes.count ?? 0,
-    bookedCalls:   bookedCallsRes.count   ?? 0,
-    hotLeads:      hotLeadsRes.count      ?? 0,
-    events:        eventsRes.data         ?? [],
-    notifications: notifsRes.data         ?? [],
-    contactActs:   contactActsRes.data    ?? [],
-    dealActs:      dealActsRes.data       ?? [],
+    bookedCalls:     bookedCallsRes.count     ?? 0,
+    hotLeads:        hotLeadsRes.count        ?? 0,
+    events:          eventsRes.data           ?? [],
+    notifications:   notifsRes.data           ?? [],
+    contactActs:     contactActsRes.data      ?? [],
+    dealActs:        dealActsRes.data         ?? [],
   };
 }
 
-// ─── Page ───────────────────────────────────────────────────────────────────
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default async function DashboardPage() {
+  // createServerClient reads cookies — must stay here, outside any cache scope
   const supabase = await createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const userId   = user?.id ?? "anon";
+  const userId = user?.id ?? "anon";
 
   const now        = new Date();
   const monthKey   = `${now.getFullYear()}-${now.getMonth()}`;
+  const cacheKey   = `${userId}:${monthKey}`;
   const monthLabel = now.toLocaleString("en-GB", { month: "long", year: "numeric" });
 
-  // Cache per-user, rotates every 60 s and on month change
-  const getCached = unstable_cache(
-    () => fetchDashboardData(userId, monthKey),
-    ["dashboard", userId, monthKey],
-    { revalidate: 60, tags: ["dashboard"] },
-  );
-
+  // Return cached result if still fresh; otherwise run queries and cache result
+  const hit = _dashCache.get(cacheKey);
   const {
     contactsTotal: totalContacts,
     contactsNew:   newLeads,
@@ -105,7 +105,12 @@ export default async function DashboardPage() {
     notifications,
     contactActs:   contactActsData,
     dealActs:      dealActsData,
-  } = await getCached();
+  } = (hit && Date.now() - hit.ts < CACHE_TTL)
+    ? hit.data
+    : await runQueries(supabase, now).then(data => {
+        _dashCache.set(cacheKey, { data, ts: Date.now() });
+        return data;
+      });
 
   // ── Derived KPIs ──────────────────────────────────────────────────────────
 
@@ -114,7 +119,6 @@ export default async function DashboardPage() {
   const pipelineValue = deals.reduce((s, d) => s + (d.projected_profit ?? 0), 0);
   const recentDeals   = deals.slice(0, 6);
 
-  // Deal stage breakdown
   const stageCounts: Record<string, number> = {};
   const stageValues: Record<string, number> = {};
   deals.forEach(d => {
@@ -189,7 +193,7 @@ export default async function DashboardPage() {
     {
       label: "Net Profit",
       value: fmt(Math.abs(netProfit)),
-      sub: `${monthLabel}`,
+      sub: monthLabel,
       color: netProfit >= 0 ? "emerald" as const : "rose" as const,
       href: "/finance",
       icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>,
@@ -197,7 +201,7 @@ export default async function DashboardPage() {
     {
       label: "Money In",
       value: fmt(moneyIn),
-      sub: `${monthLabel}`,
+      sub: monthLabel,
       color: "emerald" as const,
       href: "/finance",
       icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>,
@@ -205,7 +209,7 @@ export default async function DashboardPage() {
     {
       label: "Money Out",
       value: fmt(moneyOut),
-      sub: `${monthLabel}`,
+      sub: monthLabel,
       color: "rose" as const,
       href: "/finance",
       icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>,
