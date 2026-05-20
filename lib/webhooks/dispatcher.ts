@@ -28,6 +28,7 @@ interface N8nEventCfg { url?: string | null; enabled?: boolean }
 interface N8nSettings {
   enabled:     boolean;
   base_url:    string | null;
+  url_mode:    "append_event" | "fixed";
   event_config: Record<string, N8nEventCfg>;
 }
 
@@ -42,9 +43,11 @@ export async function getN8nSettings(): Promise<N8nSettings | null> {
     const admin = createAdminClient();
     const { data } = await admin.from("n8n_settings").select("*").limit(1).single();
     if (data) {
+      const row = data as Record<string, unknown>;
       _settingsCache = {
         enabled:      data.enabled as boolean,
         base_url:     data.base_url as string | null,
+        url_mode:     (row.url_mode as "append_event" | "fixed") ?? "append_event",
         event_config: (data.event_config as Record<string, N8nEventCfg>) ?? {},
       };
       _settingsCacheAt = now;
@@ -79,14 +82,20 @@ function safeEqual(a: string, b: string): boolean {
 // ─── URL resolution ───────────────────────────────────────────────────────────
 
 function resolveUrl(event: WebhookEvent, settings: N8nSettings | null): string | null {
-  // DB event-level override
+  // DB event-level URL override (always wins)
   const cfg = settings?.event_config[event];
-  if (cfg?.enabled === false) return null; // explicitly disabled
+  if (cfg?.enabled === false) return null;
   if (cfg?.url)               return cfg.url;
+
+  const urlMode = settings?.url_mode ?? "append_event";
 
   // DB base URL
   const dbBase = settings?.base_url;
-  if (dbBase) return `${dbBase.replace(/\/$/, "")}/${event.replace(/_/g, "-")}`;
+  if (dbBase) {
+    if (urlMode === "fixed") return dbBase.replace(/\/$/, "");
+    // append_event: use event name as-is with underscores (n8n default path style)
+    return `${dbBase.replace(/\/$/, "")}/${event}`;
+  }
 
   // Env var per-event override
   const specific = process.env[`N8N_WEBHOOK_${event.toUpperCase()}`];
@@ -95,7 +104,14 @@ function resolveUrl(event: WebhookEvent, settings: N8nSettings | null): string |
   // Env var base URL fallback
   const envBase = process.env.N8N_WEBHOOK_BASE_URL;
   if (!envBase) return null;
-  return `${envBase.replace(/\/$/, "")}/${event.replace(/_/g, "-")}`;
+  if (urlMode === "fixed") return envBase.replace(/\/$/, "");
+  return `${envBase.replace(/\/$/, "")}/${event}`;
+}
+
+/** Returns the URL that would be called for a given event — for UI preview. */
+export async function resolveEventUrl(event: WebhookEvent): Promise<string | null> {
+  const settings = await getN8nSettings();
+  return resolveUrl(event, settings);
 }
 
 function isEnabled(settings: N8nSettings | null): boolean {
@@ -136,19 +152,22 @@ async function updateDeliveryLog(
   httpStatus: number | null,
   responseMs: number | null,
   errorMessage: string | null,
+  responseBody: string | null,
 ): Promise<void> {
   try {
     const admin = createAdminClient();
     await admin
       .from("webhook_delivery_logs")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .update({
         status,
         attempts,
         http_status:     httpStatus,
         response_ms:     responseMs,
         error_message:   errorMessage,
+        response_body:   responseBody,
         last_attempt_at: new Date().toISOString(),
-      })
+      } as any)
       .eq("id", logId);
   } catch {
     // Never block main flow
@@ -182,6 +201,7 @@ export async function dispatchWebhook(
   let lastHttpStatus: number | null = null;
   let lastError: string | null = null;
   let lastResponseMs: number | null = null;
+  let lastResponseBody: string | null = null;
   let finalStatus: "success" | "failed" = "failed";
   let attempts = 0;
 
@@ -198,17 +218,23 @@ export async function dispatchWebhook(
         method: "POST",
         signal: controller.signal,
         headers: {
-          "Content-Type":       "application/json",
-          "X-Braxton-Event":    event,
+          "Content-Type":        "application/json",
+          "X-Braxton-Event":     event,
           "X-Braxton-Signature": hmac(body),
           "X-Braxton-Timestamp": Date.now().toString(),
-          "User-Agent":         "BraxtonOS/1.0",
+          "User-Agent":          "BraxtonOS/1.0",
         },
         body,
       });
 
       lastResponseMs = Date.now() - start;
       lastHttpStatus = response.status;
+
+      // Always capture response body (truncated) for debugging 404s and error messages
+      try {
+        const raw = await response.text();
+        lastResponseBody = raw.length > 2000 ? raw.slice(0, 2000) + "…" : raw;
+      } catch { /* ignore */ }
 
       if (response.ok) {
         finalStatus = "success";
@@ -217,19 +243,20 @@ export async function dispatchWebhook(
       }
       if (response.status >= 400 && response.status < 500) {
         lastError = `HTTP ${response.status}`;
-        break;
+        break; // 4xx: no point retrying
       }
       lastError = `HTTP ${response.status}`;
     } catch (err) {
       lastResponseMs = Date.now() - start;
       lastError = err instanceof Error ? err.message : String(err);
+      lastResponseBody = lastError;
     } finally {
       clearTimeout(t);
     }
   }
 
   if (logId) {
-    void updateDeliveryLog(logId, finalStatus, attempts, lastHttpStatus, lastResponseMs, lastError);
+    void updateDeliveryLog(logId, finalStatus, attempts, lastHttpStatus, lastResponseMs, lastError, lastResponseBody);
   }
 }
 

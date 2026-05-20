@@ -14,6 +14,7 @@ interface DeliveryLog {
   attempts:        number;
   http_status:     number | null;
   error_message:   string | null;
+  response_body:   string | null;
   response_ms:     number | null;
   last_attempt_at: string | null;
 }
@@ -204,27 +205,33 @@ function DeliveryTab() {
                 <th className="px-3 py-2 text-left">Event</th>
                 <th className="px-3 py-2 text-left">Status</th>
                 <th className="px-3 py-2 text-left">HTTP</th>
-                <th className="px-3 py-2 text-left">Attempts</th>
-                <th className="px-3 py-2 text-left">Response</th>
+                <th className="px-3 py-2 text-left">Ms</th>
                 <th className="px-3 py-2 text-left">When</th>
-                <th className="px-3 py-2 text-left">URL</th>
+                <th className="px-3 py-2 text-left">URL + Response</th>
                 <th className="px-3 py-2 text-left">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {(data?.logs ?? []).map(log => (
-                <tr key={log.id} className="hover:bg-gray-50">
+                <tr key={log.id} className="hover:bg-gray-50 align-top">
                   <td className="px-3 py-2 font-mono text-xs">{log.event}</td>
                   <td className="px-3 py-2">
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLES[log.status] ?? ""}`}>
                       {log.status}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-gray-600">{log.http_status ?? "—"}</td>
-                  <td className="px-3 py-2 text-gray-600">{log.attempts}</td>
-                  <td className="px-3 py-2 text-gray-600">{log.response_ms != null ? `${log.response_ms}ms` : "—"}</td>
-                  <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{relTime(log.created_at)}</td>
-                  <td className="px-3 py-2 text-gray-400 text-xs max-w-[180px] truncate" title={log.url}>{log.url}</td>
+                  <td className="px-3 py-2 text-gray-600 text-xs">{log.http_status ?? "—"}</td>
+                  <td className="px-3 py-2 text-gray-500 text-xs">{log.response_ms != null ? `${log.response_ms}` : "—"}</td>
+                  <td className="px-3 py-2 text-gray-500 whitespace-nowrap text-xs">{relTime(log.created_at)}</td>
+                  <td className="px-3 py-2 text-xs max-w-[280px]">
+                    <div className="text-gray-400 font-mono truncate" title={log.url}>{log.url}</div>
+                    {log.response_body && (
+                      <div className="mt-0.5 text-red-500 truncate" title={log.response_body}>{log.response_body}</div>
+                    )}
+                    {log.error_message && !log.response_body && (
+                      <div className="mt-0.5 text-red-400">{log.error_message}</div>
+                    )}
+                  </td>
                   <td className="px-3 py-2">
                     {log.status === "failed" && (
                       <button
