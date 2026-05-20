@@ -118,8 +118,45 @@ export async function POST(req: NextRequest) {
     ai_automation: "AI Automation",
   };
 
-  // Fire-and-forget: notification, task, and webhook — failures only log warnings
+  // Fire-and-forget: inbox conversation + message, notification, task, webhook
+  // Any failure is logged as a warning — the form save above already succeeded.
   void (async () => {
+    const message = typeof body.message === "string" && body.message.trim()
+      ? body.message.trim()
+      : `${formLabels[form_type]} form submission received.`;
+
+    // 1. Inbox conversation + message
+    try {
+      const { data: conv } = await supabase
+        .from("inbox_conversations")
+        .insert({
+          platform:          "website_form",
+          contact_id,
+          contact_name:      name,
+          subject:           `${formLabels[form_type]} enquiry from ${name}`,
+          latest_message:    message,
+          latest_message_at: new Date().toISOString(),
+          status:            "open",
+          priority:          "high",
+          is_read:           false,
+        })
+        .select("id")
+        .single();
+
+      if (conv?.id) {
+        await supabase.from("inbox_messages").insert({
+          conversation_id: conv.id,
+          direction:       "inbound",
+          body:            message,
+          sender_name:     name,
+          is_read:         false,
+        });
+      }
+    } catch (e) {
+      console.warn("[forms/submit] inbox insert failed:", e);
+    }
+
+    // 2. In-app notification
     try {
       await supabase.from("notifications").insert({
         title:              `New ${formLabels[form_type]} form submission: ${name}`,
@@ -135,6 +172,7 @@ export async function POST(req: NextRequest) {
       console.warn("[forms/submit] notification insert failed:", e);
     }
 
+    // 3. Follow-up task
     try {
       await supabase.from("tasks").insert({
         title:             TASK_TITLES[form_type],
@@ -148,6 +186,7 @@ export async function POST(req: NextRequest) {
       console.warn("[forms/submit] task insert failed:", e);
     }
 
+    // 4. n8n webhook
     try {
       await dispatchWebhook("website_lead", {
         submission_id: submission.id,
