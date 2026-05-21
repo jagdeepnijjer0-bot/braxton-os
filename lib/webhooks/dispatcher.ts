@@ -185,9 +185,37 @@ interface DeliveryResult {
   responseBody:  string | null;
 }
 
-async function executeDelivery(url: string, body: string, event: WebhookEvent): Promise<DeliveryResult> {
+async function executeDelivery(
+  url: string,
+  body: string,
+  event: WebhookEvent,
+  label = "dispatch",
+): Promise<DeliveryResult> {
   const MAX_ATTEMPTS = 3;
   const RETRY_DELAYS = [0, 1000, 2000];
+
+  // Validate inputs loudly before touching the network
+  if (!url || typeof url !== "string") {
+    console.error(`[dispatcher:${label}] ABORT — url is empty or not a string:`, JSON.stringify(url));
+    return { finalStatus: "failed", attempts: 0, httpStatus: null, responseMs: null, errorMessage: "url missing", responseBody: null };
+  }
+  if (!body || typeof body !== "string") {
+    console.error(`[dispatcher:${label}] ABORT — body is empty or not a string`);
+    return { finalStatus: "failed", attempts: 0, httpStatus: null, responseMs: null, errorMessage: "body missing", responseBody: null };
+  }
+
+  // Verify body is valid JSON (catches double-stringify and other corruption)
+  try { JSON.parse(body); } catch {
+    console.error(`[dispatcher:${label}] ABORT — body is not valid JSON:`, body.slice(0, 200));
+    return { finalStatus: "failed", attempts: 0, httpStatus: null, responseMs: null, errorMessage: "body is not valid JSON", responseBody: null };
+  }
+
+  console.log(`[dispatcher:${label}] ── START ──────────────────────────────`);
+  console.log(`[dispatcher:${label}] Method : POST`);
+  console.log(`[dispatcher:${label}] URL    : ${url}`);
+  console.log(`[dispatcher:${label}] Event  : ${event}`);
+  console.log(`[dispatcher:${label}] Body   : ${body.slice(0, 500)}${body.length > 500 ? "…" : ""}`);
+  console.log(`[dispatcher:${label}] Headers: Content-Type=application/json  X-Braxton-Event=${event}  User-Agent=BraxtonOS/1.0`);
 
   let lastHttpStatus: number | null = null;
   let lastError: string | null = null;
@@ -197,15 +225,20 @@ async function executeDelivery(url: string, body: string, event: WebhookEvent): 
   let attempts = 0;
 
   for (let i = 0; i < MAX_ATTEMPTS; i++) {
-    if (RETRY_DELAYS[i] > 0) await new Promise(r => setTimeout(r, RETRY_DELAYS[i]));
+    if (RETRY_DELAYS[i] > 0) {
+      console.log(`[dispatcher:${label}] Waiting ${RETRY_DELAYS[i]}ms before attempt ${i + 1}`);
+      await new Promise(r => setTimeout(r, RETRY_DELAYS[i]));
+    }
 
     attempts = i + 1;
     const controller = new AbortController();
     const t = setTimeout(() => controller.abort(), 5000);
     const start = Date.now();
 
+    console.log(`[dispatcher:${label}] Attempt ${attempts}/${MAX_ATTEMPTS} → POST ${url}`);
+
     try {
-      const response = await fetch(url, {
+      const fetchOptions = {
         method: "POST",
         signal: controller.signal,
         headers: {
@@ -216,7 +249,9 @@ async function executeDelivery(url: string, body: string, event: WebhookEvent): 
           "User-Agent":          "BraxtonOS/1.0",
         },
         body,
-      });
+      };
+
+      const response = await fetch(url, fetchOptions);
 
       lastResponseMs = Date.now() - start;
       lastHttpStatus = response.status;
@@ -226,25 +261,32 @@ async function executeDelivery(url: string, body: string, event: WebhookEvent): 
         lastResponseBody = raw.length > 2000 ? raw.slice(0, 2000) + "…" : raw;
       } catch { /* ignore */ }
 
+      console.log(`[dispatcher:${label}] Attempt ${attempts} → HTTP ${response.status} (${lastResponseMs}ms) body: ${lastResponseBody?.slice(0, 200)}`);
+
       if (response.ok) {
         finalStatus = "success";
         lastError = null;
+        console.log(`[dispatcher:${label}] ✓ SUCCESS on attempt ${attempts}`);
         break;
       }
       if (response.status >= 400 && response.status < 500) {
         lastError = `HTTP ${response.status}`;
-        break; // 4xx: no point retrying
+        console.warn(`[dispatcher:${label}] ✗ 4xx — not retrying. Response: ${lastResponseBody?.slice(0, 300)}`);
+        break;
       }
       lastError = `HTTP ${response.status}`;
+      console.warn(`[dispatcher:${label}] ✗ 5xx on attempt ${attempts} — will retry`);
     } catch (err) {
       lastResponseMs = Date.now() - start;
       lastError = err instanceof Error ? err.message : String(err);
       lastResponseBody = lastError;
+      console.error(`[dispatcher:${label}] ✗ fetch threw on attempt ${attempts}:`, lastError);
     } finally {
       clearTimeout(t);
     }
   }
 
+  console.log(`[dispatcher:${label}] ── END finalStatus=${finalStatus} httpStatus=${lastHttpStatus} ──`);
   return { finalStatus, attempts, httpStatus: lastHttpStatus, responseMs: lastResponseMs, errorMessage: lastError, responseBody: lastResponseBody };
 }
 
@@ -269,9 +311,8 @@ export async function dispatchWebhook(
 
   const logId = await createDeliveryLog(event, url, body);
 
-  const result = await executeDelivery(url, body, event);
+  const result = await executeDelivery(url, body, event, "dispatch");
 
-  // await — not void — so the update completes before the serverless function returns
   if (logId) {
     await updateDeliveryLog(logId, result.finalStatus, result.attempts, result.httpStatus, result.responseMs, result.errorMessage, result.responseBody);
   }
@@ -279,8 +320,12 @@ export async function dispatchWebhook(
 
 /**
  * Retry a specific delivery log by ID.
- * Re-uses the stored URL and request body — does NOT create a new log row.
- * Returns the updated result so callers can report it.
+ *
+ * Always re-resolves the URL from current settings so stale/broken URLs in
+ * old log rows don't cause retries to fail with the same 404 they failed
+ * with originally. Falls back to the stored URL only if settings return null.
+ *
+ * Re-serialises the stored request body exactly — does NOT create a new log row.
  */
 export async function retryDelivery(logId: string): Promise<{ ok: boolean; httpStatus: number | null; error: string | null }> {
   const admin = createAdminClient();
@@ -294,16 +339,51 @@ export async function retryDelivery(logId: string): Promise<{ ok: boolean; httpS
 
   if (!log) return { ok: false, httpStatus: null, error: "Log not found" };
 
-  const row = log as unknown as Record<string, unknown>;
-  const url  = row.url as string;
-  const event = row.event as WebhookEvent;
-  // Re-serialize the stored request body so the HMAC is computed correctly
-  const body = JSON.stringify(row.request_body);
+  const row         = log as unknown as Record<string, unknown>;
+  const storedUrl   = row.url as string;
+  const event       = row.event as WebhookEvent;
   const prevAttempts = (row.attempts as number) ?? 0;
 
-  const result = await executeDelivery(url, body, event);
+  // ── Re-resolve URL from current settings ────────────────────────────────
+  // CRITICAL: do NOT re-use the stored URL. It may have been written before
+  // a URL fix (e.g. website-lead vs website_lead). Always resolve fresh.
+  const settings    = await getN8nSettings();
+  const resolvedUrl = resolveUrl(event, settings);
 
-  // Update the ORIGINAL log row — not a new one
+  // Also check per-event env var and base env var as final fallbacks
+  const envSpecific = process.env[`N8N_WEBHOOK_${event.toUpperCase()}`] ?? null;
+  const envBase     = process.env.N8N_WEBHOOK_BASE_URL
+    ? `${process.env.N8N_WEBHOOK_BASE_URL.replace(/\/$/, "")}/${event}`
+    : null;
+
+  const url = resolvedUrl ?? envSpecific ?? envBase ?? storedUrl;
+
+  console.log(`[dispatcher:retry] ── RETRY logId=${logId} ──────────────────`);
+  console.log(`[dispatcher:retry] event       : ${event}`);
+  console.log(`[dispatcher:retry] stored URL  : ${storedUrl}`);
+  console.log(`[dispatcher:retry] resolved URL: ${resolvedUrl}`);
+  console.log(`[dispatcher:retry] final URL   : ${url}`);
+  console.log(`[dispatcher:retry] prevAttempts: ${prevAttempts}`);
+
+  if (storedUrl !== url) {
+    console.warn(`[dispatcher:retry] URL changed from stored — updating log row`);
+  }
+
+  // ── Re-build request body ────────────────────────────────────────────────
+  // row.request_body is already a parsed JS object (Supabase auto-parses JSONB).
+  // JSON.stringify it back to a string — same structure as original dispatch.
+  const rawBody = row.request_body;
+  if (!rawBody || typeof rawBody !== "object") {
+    console.error(`[dispatcher:retry] request_body missing or not an object:`, rawBody);
+    return { ok: false, httpStatus: null, error: "stored request_body is missing" };
+  }
+  const body = JSON.stringify(rawBody);
+
+  console.log(`[dispatcher:retry] body (first 300): ${body.slice(0, 300)}`);
+
+  const result = await executeDelivery(url, body, event, "retry");
+
+  // Update the ORIGINAL log row with the (possibly corrected) URL and result
   await updateDeliveryLog(
     logId,
     result.finalStatus,
@@ -313,6 +393,15 @@ export async function retryDelivery(logId: string): Promise<{ ok: boolean; httpS
     result.errorMessage,
     result.responseBody,
   );
+
+  // If the URL was corrected, also update the stored url column so future
+  // retries and the monitoring UI show the right endpoint
+  if (storedUrl !== url) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await admin.from("webhook_delivery_logs").update({ url } as any).eq("id", logId);
+    } catch { /* non-critical */ }
+  }
 
   return { ok: result.finalStatus === "success", httpStatus: result.httpStatus, error: result.errorMessage };
 }
