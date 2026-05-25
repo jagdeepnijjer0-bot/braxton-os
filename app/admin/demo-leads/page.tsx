@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { scoreLabel } from "@/lib/demo/session";
+import { scoreLabel } from "@/lib/demo/utils";
 
 interface DemoSessionRow {
   id:               string;

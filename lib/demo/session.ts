@@ -2,6 +2,7 @@ import "server-only";
 import { randomBytes } from "crypto";
 import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
+export { scoreLabel, SCORE_HIGH_THRESHOLD } from "./utils";
 
 export const DEMO_COOKIE = "braxton_demo_token";
 const DEMO_TTL_MS = 72 * 60 * 60 * 1000; // 72 hours
@@ -96,10 +97,3 @@ export async function updateEngagementScore(sessionId: string, delta: number): P
     .eq("id", sessionId);
 }
 
-export function scoreLabel(score: number): "low" | "medium" | "high" {
-  if (score >= 30) return "high";
-  if (score >= 10) return "medium";
-  return "low";
-}
-
-export const SCORE_HIGH_THRESHOLD = 30;
