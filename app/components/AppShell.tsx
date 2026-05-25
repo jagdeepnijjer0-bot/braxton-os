@@ -12,7 +12,7 @@ export type ShellProfile = {
   role: string;
 } | null;
 
-const AUTH_PATHS = ["/login", "/signup", "/forms/"];
+const AUTH_PATHS = ["/login", "/signup", "/forms/", "/demo"];
 
 interface Props {
   children: React.ReactNode;
