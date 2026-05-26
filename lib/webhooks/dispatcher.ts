@@ -17,6 +17,7 @@ export const WEBHOOK_EVENTS = [
   "message_received",    // New inbound message received
   "deal_updated",        // Deal record updated
   "file_uploaded",       // File attachment uploaded
+  "file_deleted",        // File attachment deleted
   "demo_access_created", // Demo user registered
   "demo_high_intent",    // Demo engagement scored high
   "demo_package_reserved", // Demo user reserved a package

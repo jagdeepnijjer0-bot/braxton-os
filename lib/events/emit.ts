@@ -21,7 +21,8 @@ export type BraxtonEventName =
   | "demo.access_created"
   | "demo.high_intent"
   | "demo.package_reserved"
-  | "demo.book_call_clicked";
+  | "demo.book_call_clicked"
+  | "file.deleted";
 
 const EVENT_MAP: Record<BraxtonEventName, WebhookEvent> = {
   "lead.created":           "new_contact",
@@ -40,6 +41,7 @@ const EVENT_MAP: Record<BraxtonEventName, WebhookEvent> = {
   "demo.high_intent":       "demo_high_intent",
   "demo.package_reserved":  "demo_package_reserved",
   "demo.book_call_clicked": "demo_book_call_clicked",
+  "file.deleted":           "file_deleted",
 };
 
 // ── Typed payload interfaces ──────────────────────────────────────────────────
