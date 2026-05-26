@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import type { DemoSession } from "@/lib/demo/session";
+import BookCallButton from "./components/BookCallButton";
 
 interface SessionData extends Omit<DemoSession, "token"> {}
 
@@ -101,12 +102,11 @@ export default function DemoWorkspaceLayout({ children }: { children: React.Reac
           <span className="text-indigo-300 font-mono text-xs hidden sm:block">
             Expires in {msToHMS(timeLeft)}
           </span>
-          <button
-            onClick={() => track("book_call_clicked")}
-            className="bg-white text-indigo-900 font-bold text-xs px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors"
-          >
-            Book a call
-          </button>
+          <BookCallButton
+            variant="banner"
+            sessionName={session?.name}
+            sessionEmail={session?.email}
+          />
           <Link href="/demo/workspace/reserve" className="text-indigo-300 hover:text-white text-xs transition-colors">
             Reserve package →
           </Link>
@@ -142,10 +142,16 @@ export default function DemoWorkspaceLayout({ children }: { children: React.Reac
               );
             })}
           </div>
-          <div className="p-4 border-t border-gray-800">
+          <div className="p-4 border-t border-gray-800 space-y-2">
+            <BookCallButton
+              variant="primary"
+              label="Book a strategy call"
+              sessionName={session?.name}
+              sessionEmail={session?.email}
+              className="block w-full bg-white text-indigo-900 hover:bg-indigo-50 text-center text-sm font-bold py-2.5 rounded-lg transition-colors"
+            />
             <Link
               href="/demo/workspace/reserve"
-              onClick={() => track("book_call_clicked")}
               className="block w-full bg-indigo-600 hover:bg-indigo-500 text-white text-center text-sm font-bold py-2.5 rounded-lg transition-colors"
             >
               Reserve your OS
