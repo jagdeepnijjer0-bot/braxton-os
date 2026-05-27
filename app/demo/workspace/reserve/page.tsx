@@ -90,13 +90,13 @@ export default function DemoReservePage() {
         </div>
       </div>
 
-      {/* Package cards */}
-      <div className="grid sm:grid-cols-3 gap-5">
+      {/* Package cards — equal height, badge inline with title */}
+      <div className="grid sm:grid-cols-3 gap-5 items-stretch">
         {DEMO_PACKAGES.map(pkg => (
           <button
             key={pkg.id}
             onClick={() => setSelected(pkg.id)}
-            className={`text-left bg-white border rounded-2xl p-6 transition-all shadow-sm hover:shadow-md ${
+            className={`text-left bg-white border rounded-2xl p-6 transition-all shadow-sm hover:shadow-md flex flex-col ${
               selected === pkg.id
                 ? "border-indigo-500 ring-2 ring-indigo-500/20"
                 : pkg.highlight
@@ -104,18 +104,19 @@ export default function DemoReservePage() {
                 : "border-gray-200 hover:border-gray-300"
             }`}
           >
-            {pkg.highlight && (
-              <div className="text-xs bg-indigo-600 text-white px-2.5 py-1 rounded-full inline-block mb-4 font-semibold">
-                Most popular
-              </div>
-            )}
-
-            <div className="mb-4">
-              <div className="font-black text-xl text-gray-900">{pkg.name}</div>
-              {"subtitle" in pkg && typeof pkg.subtitle === "string" && (
-                <div className="text-indigo-600 text-sm font-medium mt-0.5">{pkg.subtitle}</div>
+            {/* Name + badge on same line */}
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className="font-black text-xl text-gray-900">{pkg.name}</span>
+              {pkg.highlight && (
+                <span className="text-xs bg-indigo-600 text-white px-2.5 py-0.5 rounded-full font-semibold shrink-0">
+                  Most popular
+                </span>
               )}
             </div>
+
+            {"subtitle" in pkg && typeof pkg.subtitle === "string" && (
+              <div className="text-indigo-600 text-sm font-medium mb-4">{pkg.subtitle}</div>
+            )}
 
             <div className="mb-4 pb-4 border-b border-gray-100">
               <div className="text-gray-900 font-bold">{pkg.price}</div>
@@ -124,7 +125,7 @@ export default function DemoReservePage() {
 
             <p className="text-gray-500 text-sm mb-5 leading-relaxed">{pkg.description}</p>
 
-            <ul className="space-y-2">
+            <ul className="space-y-2 flex-1">
               {pkg.features.map((f, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
                   <span className="text-emerald-500 shrink-0 mt-0.5">✓</span>
@@ -133,6 +134,7 @@ export default function DemoReservePage() {
               ))}
             </ul>
 
+            {/* Select button pinned to bottom of each card */}
             <div className={`mt-6 w-full py-2.5 rounded-xl text-sm font-semibold text-center transition-colors ${
               selected === pkg.id
                 ? "bg-indigo-600 text-white"

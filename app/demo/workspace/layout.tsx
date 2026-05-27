@@ -97,9 +97,9 @@ export default function DemoWorkspaceLayout({ children }: { children: React.Reac
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
+    <div className="h-screen bg-gray-950 flex flex-col overflow-hidden">
       {/* Demo banner */}
-      <div className="bg-indigo-900/80 border-b border-indigo-700/60 px-4 py-2 flex items-center justify-between gap-4 text-sm">
+      <div className="bg-indigo-900/80 border-b border-indigo-700/60 px-4 py-2 flex items-center justify-between gap-4 text-sm shrink-0">
         <div className="flex items-center gap-2 text-indigo-200">
           <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse shrink-0" />
           <span>
@@ -122,14 +122,14 @@ export default function DemoWorkspaceLayout({ children }: { children: React.Reac
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0">
         {/* Sidebar */}
         <nav className="w-52 bg-gray-900 border-r border-gray-800 flex flex-col shrink-0">
-          <div className="px-4 py-5 border-b border-gray-800">
+          <div className="px-4 py-5 border-b border-gray-800 shrink-0">
             <div className="text-white font-black text-lg tracking-tight">Braxton OS</div>
             <div className="text-indigo-400 text-xs mt-0.5">Demo mode</div>
           </div>
-          <div className="flex-1 py-4 px-2 space-y-0.5 overflow-y-auto">
+          <div className="flex-1 min-h-0 py-4 px-2 space-y-0.5 overflow-y-auto">
             {NAV_ITEMS.map(item => {
               const active = pathname === item.href;
               return (
@@ -148,7 +148,8 @@ export default function DemoWorkspaceLayout({ children }: { children: React.Reac
               );
             })}
           </div>
-          <div className="p-4 border-t border-gray-800 space-y-2">
+          {/* Sticky bottom buttons — always visible */}
+          <div className="p-4 border-t border-gray-800 space-y-2 shrink-0">
             <BookCallButton
               variant="primary"
               label="Book Strategy Call"
@@ -165,8 +166,8 @@ export default function DemoWorkspaceLayout({ children }: { children: React.Reac
           </div>
         </nav>
 
-        {/* Main content */}
-        <main className="flex-1 overflow-y-auto bg-gray-50">
+        {/* Main content — fills remaining space and scrolls independently */}
+        <main className="flex-1 min-w-0 overflow-y-auto bg-gray-50">
           {children}
         </main>
       </div>
