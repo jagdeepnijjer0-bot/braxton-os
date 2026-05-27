@@ -4,17 +4,18 @@ import { supabase } from '@/lib/supabase';
 import { UserProfile } from '@/lib/types';
 
 export function useAuth() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [session, setSession]   = useState<Session | null>(null);
+  const [user, setUser]         = useState<User | null>(null);
+  const [profile, setProfile]   = useState<UserProfile | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) fetchProfile(session.user.id);
-      setLoading(false);
+      else setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -24,6 +25,7 @@ export function useAuth() {
         fetchProfile(session.user.id);
       } else {
         setProfile(null);
+        setLoading(false);
       }
     });
 
@@ -31,12 +33,19 @@ export function useAuth() {
   }, []);
 
   async function fetchProfile(userId: string) {
-    const { data } = await supabase
+    setLoading(true);
+    setError(null);
+    const { data, error: fetchError } = await supabase
       .from('restaurant_profiles')
       .select('*')
       .eq('id', userId)
-      .single();
-    if (data) setProfile(data);
+      .maybeSingle();          // safe when trigger hasn't fired yet
+    if (fetchError) {
+      setError(fetchError.message);
+    } else {
+      setProfile(data);
+    }
+    setLoading(false);
   }
 
   async function signIn(email: string, password: string) {
@@ -56,15 +65,20 @@ export function useAuth() {
   async function signOut() {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
+    setProfile(null);
   }
 
   async function updateProfile(updates: Partial<UserProfile>) {
     if (!user) return;
     const { error } = await supabase
       .from('restaurant_profiles')
-      .upsert({ id: user.id, ...updates, updated_at: new Date().toISOString() });
+      .upsert({ id: user.id, email: user.email!, ...updates, updated_at: new Date().toISOString() });
     if (error) throw error;
     await fetchProfile(user.id);
+  }
+
+  function refreshProfile() {
+    if (user) fetchProfile(user.id);
   }
 
   return {
@@ -72,10 +86,12 @@ export function useAuth() {
     user,
     profile,
     loading,
+    error,
     signIn,
     signUp,
     signOut,
     updateProfile,
+    refreshProfile,
     isAuthenticated: !!session,
   };
 }
