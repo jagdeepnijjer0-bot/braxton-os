@@ -15,6 +15,7 @@ interface DemoSessionRow {
   business_name:        string | null;
   industry:             string | null;
   problem:              string | null;
+  bottleneck:           string | null;
   engagement_score:     number;
   package_reserved:     string | null;
   package_reserved_at:  string | null;
@@ -122,11 +123,12 @@ export default function DemoLeadsPage() {
       {/* Table */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[900px]">
+          <table className="w-full text-sm min-w-[1050px]">
             <thead>
               <tr className="border-b border-gray-800 text-xs text-gray-500 uppercase tracking-wide bg-gray-900/80">
                 <th className="px-4 py-3 text-left">Prospect</th>
                 <th className="px-4 py-3 text-left">Business</th>
+                <th className="px-4 py-3 text-left">Bottleneck</th>
                 <th className="px-4 py-3 text-left">Score</th>
                 <th className="px-4 py-3 text-left">Reserved</th>
                 <th className="px-4 py-3 text-left">Book call</th>
@@ -139,7 +141,7 @@ export default function DemoLeadsPage() {
             <tbody className="divide-y divide-gray-800">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={10} className="px-4 py-10 text-center text-gray-500">
                     <div className="flex justify-center">
                       <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
                     </div>
@@ -147,7 +149,7 @@ export default function DemoLeadsPage() {
                 </tr>
               ) : sessions.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={10} className="px-4 py-10 text-center text-gray-500">
                     No demo sessions yet.
                   </td>
                 </tr>
@@ -169,6 +171,17 @@ export default function DemoLeadsPage() {
                       <td className="px-4 py-3">
                         <div className="text-gray-300 text-sm">{s.business_name ?? "—"}</div>
                         {s.industry && <div className="text-gray-500 text-xs">{s.industry}</div>}
+                      </td>
+                      <td className="px-4 py-3">
+                        {s.bottleneck ? (
+                          <span className="text-xs bg-amber-900/40 text-amber-300 px-2 py-1 rounded-full font-medium">
+                            {s.bottleneck}
+                          </span>
+                        ) : s.problem ? (
+                          <span className="text-xs text-gray-400">{s.problem.slice(0, 40)}{s.problem.length > 40 ? "…" : ""}</span>
+                        ) : (
+                          <span className="text-gray-600 text-xs">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
@@ -236,12 +249,16 @@ export default function DemoLeadsPage() {
                     {/* Expanded row — event timeline */}
                     {isOpen && (
                       <tr key={`${s.id}-detail`} className="bg-gray-800/20">
-                        <td colSpan={9} className="px-6 py-4">
+                        <td colSpan={10} className="px-6 py-4">
                           <div className="grid sm:grid-cols-2 gap-6">
                             {/* Problem / context */}
                             <div>
                               <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Context</div>
                               <div className="space-y-1 text-sm">
+                                <div className="flex gap-2">
+                                  <span className="text-gray-500 w-28 shrink-0">Bottleneck:</span>
+                                  <span className="text-gray-300">{s.bottleneck ?? "—"}</span>
+                                </div>
                                 <div className="flex gap-2">
                                   <span className="text-gray-500 w-28 shrink-0">Problem:</span>
                                   <span className="text-gray-300">{s.problem ?? "—"}</span>

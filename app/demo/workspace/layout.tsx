@@ -9,21 +9,29 @@ import BookCallButton from "./components/BookCallButton";
 interface SessionData extends Omit<DemoSession, "token"> {}
 
 const NAV_ITEMS = [
-  { href: "/demo/workspace",             label: "Dashboard",    icon: "📊" },
-  { href: "/demo/workspace/crm",         label: "CRM",          icon: "👥" },
-  { href: "/demo/workspace/inbox",       label: "Inbox",        icon: "📬" },
-  { href: "/demo/workspace/tasks",       label: "Tasks",        icon: "✅" },
-  { href: "/demo/workspace/automations", label: "Automations",  icon: "⚡" },
-  { href: "/demo/workspace/reserve",     label: "Reserve",      icon: "🚀" },
+  { href: "/demo/workspace",              label: "Dashboard",        icon: "⊞" },
+  { href: "/demo/workspace/deals",        label: "Deals & Projects", icon: "💼" },
+  { href: "/demo/workspace/finance",      label: "Finance",          icon: "£" },
+  { href: "/demo/workspace/inbox",        label: "Inbox",            icon: "✉" },
+  { href: "/demo/workspace/crm",          label: "CRM",              icon: "👥" },
+  { href: "/demo/workspace/outreach",     label: "Outreach",         icon: "📣" },
+  { href: "/demo/workspace/tasks",        label: "Tasks",            icon: "✓" },
+  { href: "/demo/workspace/calendar",     label: "Calendar",         icon: "📅" },
+  { href: "/demo/workspace/reports",      label: "Reports",          icon: "📊" },
 ];
 
 const PAGE_EVENTS: Record<string, string> = {
-  "/demo/workspace":             "page_view",
-  "/demo/workspace/crm":         "crm_viewed",
-  "/demo/workspace/inbox":       "inbox_viewed",
-  "/demo/workspace/tasks":       "tasks_viewed",
-  "/demo/workspace/automations": "automations_viewed",
-  "/demo/workspace/reserve":     "reserve_viewed",
+  "/demo/workspace":              "page_view",
+  "/demo/workspace/deals":        "deals_viewed",
+  "/demo/workspace/finance":      "finance_viewed",
+  "/demo/workspace/crm":          "crm_viewed",
+  "/demo/workspace/inbox":        "inbox_viewed",
+  "/demo/workspace/outreach":     "outreach_viewed",
+  "/demo/workspace/tasks":        "tasks_viewed",
+  "/demo/workspace/calendar":     "calendar_viewed",
+  "/demo/workspace/reports":      "reports_viewed",
+  "/demo/workspace/automations":  "automations_viewed",
+  "/demo/workspace/reserve":      "reserve_viewed",
 };
 
 function msToHMS(ms: number) {
@@ -120,24 +128,21 @@ export default function DemoWorkspaceLayout({ children }: { children: React.Reac
             <div className="text-white font-black text-lg tracking-tight">Braxton OS</div>
             <div className="text-indigo-400 text-xs mt-0.5">Demo mode</div>
           </div>
-          <div className="flex-1 py-4 px-2 space-y-1">
+          <div className="flex-1 py-4 px-2 space-y-0.5 overflow-y-auto">
             {NAV_ITEMS.map(item => {
               const active = pathname === item.href;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     active
                       ? "bg-indigo-700/30 text-indigo-300 border border-indigo-700/40"
                       : "text-gray-400 hover:text-white hover:bg-gray-800"
                   }`}
                 >
-                  <span>{item.icon}</span>
+                  <span className="text-base w-5 text-center">{item.icon}</span>
                   {item.label}
-                  {item.label === "Reserve" && (
-                    <span className="ml-auto bg-indigo-600 text-white text-xs px-1.5 py-0.5 rounded-full">New</span>
-                  )}
                 </Link>
               );
             })}
@@ -160,7 +165,7 @@ export default function DemoWorkspaceLayout({ children }: { children: React.Reac
         </nav>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto bg-gray-50">
           {children}
         </main>
       </div>

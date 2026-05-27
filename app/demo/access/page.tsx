@@ -15,6 +15,21 @@ const INDUSTRIES = [
   "Other",
 ];
 
+const BOTTLENECK_OPTIONS = [
+  "Lead generation",
+  "Lead follow-up",
+  "Organisation / admin",
+  "Team communication",
+  "Project tracking",
+  "Client management",
+  "Sales process",
+  "Marketing consistency",
+  "Finance visibility",
+  "Scaling operations",
+  "Too many manual tasks",
+  "No central system",
+];
+
 export default function DemoAccessPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -26,12 +41,14 @@ export default function DemoAccessPage() {
     setError(null);
 
     const fd = new FormData(e.currentTarget);
+    const bottleneck_value = fd.get("bottleneck") as string || null;
     const payload = {
       name:          fd.get("name") as string,
       email:         fd.get("email") as string,
       business_name: fd.get("business_name") as string,
       industry:      fd.get("industry") as string || null,
-      problem:       fd.get("problem") as string || null,
+      problem:       bottleneck_value,
+      bottleneck:    bottleneck_value,
     };
 
     try {
@@ -111,14 +128,18 @@ export default function DemoAccessPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
-                Biggest operational challenge
+                Biggest operational challenge *
               </label>
-              <textarea
-                name="problem"
-                rows={3}
-                placeholder="E.g. too many tools, leads falling through the cracks, manual follow-ups…"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-              />
+              <select
+                name="bottleneck"
+                required
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Select your main challenge</option>
+                {BOTTLENECK_OPTIONS.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
             </div>
 
             {error && (

@@ -1,89 +1,173 @@
-import Link from "next/link";
-import { DEMO_INBOX } from "@/lib/demo/seed";
+"use client";
 
-export const metadata = { title: "Inbox — Braxton OS Demo" };
+import { useState } from "react";
+import { DEMO_INBOX_THREADS, DEMO_CONTACTS } from "@/lib/demo/seed";
 
 const PLATFORM_ICONS: Record<string, string> = {
-  email:        "✉️",
+  email:        "✉",
   whatsapp:     "💬",
-  instagram:    "📸",
-  linkedin:     "💼",
-  facebook:     "📘",
+  instagram:    "📷",
+  facebook:     "f",
   website_form: "🌐",
 };
 
-const PRIORITY_COLORS: Record<string, string> = {
-  low:    "text-gray-400",
-  normal: "text-blue-400",
-  high:   "text-orange-400",
-  urgent: "text-red-400",
+const PLATFORM_LABELS: Record<string, string> = {
+  email:        "Email",
+  whatsapp:     "WhatsApp",
+  instagram:    "Instagram",
+  facebook:     "Facebook",
+  website_form: "Web Form",
 };
 
-export default function DemoInboxPage() {
+const PRIORITY_BADGE: Record<string, string> = {
+  low:    "bg-gray-100 text-gray-500",
+  normal: "bg-blue-50 text-blue-600",
+  high:   "bg-orange-50 text-orange-600",
+  urgent: "bg-red-50 text-red-600",
+};
+
+export default function InboxPage() {
+  const [selectedId, setSelectedId] = useState<string | null>(DEMO_INBOX_THREADS[0]?.id ?? null);
+  const selected = selectedId ? DEMO_INBOX_THREADS.find(t => t.id === selectedId) ?? null : null;
+
+  const contact = selected?.contact_id
+    ? DEMO_CONTACTS.find(c => c.id === selected.contact_id)
+    : null;
+
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Inbox</h1>
-          <p className="text-gray-400 text-sm mt-1">
-            Unified messages from all channels — email, WhatsApp, LinkedIn, and web forms
-          </p>
+    <div className="flex h-full" style={{ minHeight: "calc(100vh - 120px)" }}>
+      {/* Left panel — thread list */}
+      <div className="w-80 shrink-0 border-r border-gray-200 bg-white flex flex-col">
+        <div className="px-4 py-4 border-b border-gray-100">
+          <h1 className="text-lg font-bold text-gray-900">Inbox</h1>
+          <p className="text-gray-400 text-xs mt-0.5">{DEMO_INBOX_THREADS.filter(t => !t.is_read).length} unread</p>
         </div>
-        <div className="bg-red-900/40 text-red-300 text-xs px-3 py-1.5 rounded-lg border border-red-700/40 font-semibold">
-          2 unread
+
+        {/* Info box */}
+        <div className="mx-3 mt-3 bg-blue-50 border border-blue-100 rounded-xl p-3 text-blue-700 text-xs">
+          View conversations from email, WhatsApp, Instagram, Facebook and website enquiries in one place.
         </div>
-      </div>
 
-      <div className="bg-indigo-900/20 border border-indigo-700/40 rounded-xl px-5 py-4 text-sm text-indigo-300">
-        <strong>In your real OS:</strong> every inbound message — regardless of channel — lands here.
-        AI can draft replies, route to team members, and auto-close resolved threads.
-      </div>
-
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden divide-y divide-gray-800">
-        {DEMO_INBOX.map(conv => (
-          <div
-            key={conv.id}
-            className={`px-5 py-4 ${!conv.is_read ? "bg-gray-900" : "bg-gray-900/50"}`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3 flex-1 min-w-0">
-                <div className="text-2xl shrink-0">{PLATFORM_ICONS[conv.platform] ?? "💬"}</div>
+        <div className="flex-1 overflow-y-auto divide-y divide-gray-100 mt-3">
+          {DEMO_INBOX_THREADS.map(thread => (
+            <button
+              key={thread.id}
+              className={`w-full text-left px-4 py-3 transition-colors hover:bg-gray-50 ${
+                selectedId === thread.id ? "bg-indigo-50 border-l-2 border-l-indigo-500" : ""
+              }`}
+              onClick={() => setSelectedId(thread.id)}
+            >
+              <div className="flex items-start gap-2">
+                <span className="text-lg shrink-0 mt-0.5">{PLATFORM_ICONS[thread.platform] ?? "💬"}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className={`font-semibold text-sm ${!conv.is_read ? "text-white" : "text-gray-300"}`}>
-                      {conv.contact_name}
+                    <span className={`text-sm font-semibold truncate ${!thread.is_read ? "text-gray-900" : "text-gray-600"}`}>
+                      {thread.contact_name}
                     </span>
-                    {!conv.is_read && (
-                      <span className="w-2 h-2 rounded-full bg-indigo-400 shrink-0" />
+                    {!thread.is_read && (
+                      <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
                     )}
                   </div>
-                  <div className="text-xs text-gray-500 mb-1">{conv.subject}</div>
-                  <div className="text-sm text-gray-400 truncate">{conv.latest_message}</div>
+                  <div className="text-xs text-gray-400 truncate mt-0.5">{thread.subject}</div>
+                  <div className="text-xs text-gray-400 truncate mt-0.5">
+                    {thread.messages[thread.messages.length - 1]?.body.slice(0, 60)}…
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${PRIORITY_BADGE[thread.priority] ?? "bg-gray-100 text-gray-500"}`}>
+                      {thread.priority}
+                    </span>
+                    <span className="text-xs text-gray-300">
+                      {thread.messages[thread.messages.length - 1]?.time}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-1 shrink-0">
-                <span className={`text-xs font-semibold ${PRIORITY_COLORS[conv.priority] ?? "text-gray-400"}`}>
-                  {conv.priority}
-                </span>
-                <span className="text-xs text-gray-500">
-                  {new Date(conv.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="bg-gradient-to-r from-indigo-900/30 to-purple-900/30 border border-indigo-700/40 rounded-xl p-5 flex items-center justify-between gap-4">
-        <div className="text-sm text-gray-300">
-          <span className="font-bold text-white">Your inbox</span> would connect your real email, WhatsApp Business, LinkedIn DMs, and website forms — all searchable and automatable.
-        </div>
-        <Link
-          href="/demo/workspace/reserve"
-          className="shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
-        >
-          Get yours →
-        </Link>
+      {/* Right panel — conversation detail */}
+      <div className="flex-1 flex flex-col bg-gray-50 overflow-hidden">
+        {selected ? (
+          <>
+            {/* Header */}
+            <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-semibold text-gray-900">{selected.contact_name}</h2>
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                    {PLATFORM_LABELS[selected.platform] ?? selected.platform}
+                  </span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PRIORITY_BADGE[selected.priority] ?? "bg-gray-100 text-gray-500"}`}>
+                    {selected.priority}
+                  </span>
+                </div>
+                <div className="text-xs text-gray-400 mt-0.5">{selected.subject}</div>
+              </div>
+            </div>
+
+            {/* AI summary */}
+            <div className="mx-6 mt-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="bg-amber-50 border border-amber-200 text-amber-700 text-xs px-2 py-0.5 rounded-full font-medium">AI Summary</span>
+                </div>
+                <p className="text-amber-800 text-sm">{selected.ai_summary}</p>
+                <div className="mt-2 pt-2 border-t border-amber-200">
+                  <span className="text-xs text-amber-600 font-medium">Suggested next action: </span>
+                  <span className="text-xs text-amber-700">{selected.ai_next_action}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+              {selected.messages.map(msg => (
+                <div
+                  key={msg.id}
+                  className={`flex ${msg.direction === "out" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-sm rounded-xl px-4 py-3 text-sm ${
+                      msg.direction === "out"
+                        ? "bg-indigo-100 text-indigo-900"
+                        : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    <div className="text-xs font-semibold mb-1 opacity-60">{msg.sender_name}</div>
+                    <div className="leading-relaxed">{msg.body}</div>
+                    <div className="text-xs opacity-50 mt-1.5 text-right">{msg.time}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Linked contact */}
+            {contact && (
+              <div className="bg-white border-t border-gray-200 px-6 py-3 flex items-center gap-3">
+                <span className="text-xs text-gray-400">Linked CRM contact:</span>
+                <span className="text-sm font-medium text-gray-900">{contact.name}</span>
+                <span className="text-xs text-gray-400">{contact.company}</span>
+                <span className="ml-auto text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                  {contact.status.replace(/_/g, " ")}
+                </span>
+              </div>
+            )}
+            {!contact && selected.contact_id === null && (
+              <div className="bg-white border-t border-gray-200 px-6 py-3 text-xs text-gray-400">
+                No CRM contact linked — add to CRM to track this lead.
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center text-gray-400">
+              <div className="text-4xl mb-3">✉</div>
+              <p className="text-sm">Select a conversation to view</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -16,6 +16,7 @@ export interface DemoSession {
   business_name: string | null;
   industry: string | null;
   problem: string | null;
+  bottleneck: string | null;
   engagement_score: number;
   last_active_at: string;
   expires_at: string;
@@ -33,24 +34,29 @@ export async function createDemoSession(input: {
   business_name?: string;
   industry?: string;
   problem?: string;
+  bottleneck?: string;
   contact_id?: string | null;
 }): Promise<DemoSession | null> {
   const admin = createAdminClient();
   const token = generateToken();
   const expires_at = new Date(Date.now() + DEMO_TTL_MS).toISOString();
 
+  const insertPayload = {
+    token,
+    email:         input.email,
+    name:          input.name,
+    business_name: input.business_name ?? null,
+    industry:      input.industry ?? null,
+    problem:       input.problem ?? null,
+    bottleneck:    input.bottleneck ?? null,
+    contact_id:    input.contact_id ?? null,
+    expires_at,
+  };
+
   const { data, error } = await admin
     .from("demo_sessions")
-    .insert({
-      token,
-      email:         input.email,
-      name:          input.name,
-      business_name: input.business_name ?? null,
-      industry:      input.industry ?? null,
-      problem:       input.problem ?? null,
-      contact_id:    input.contact_id ?? null,
-      expires_at,
-    })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .insert(insertPayload as any)
     .select()
     .single();
 

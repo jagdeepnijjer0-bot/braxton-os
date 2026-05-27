@@ -1,139 +1,174 @@
 import Link from "next/link";
-import { DEMO_KPI, DEMO_AUTOMATION_FEED } from "@/lib/demo/seed";
+import { DEMO_KPI, DEMO_PROJECTS, DEMO_TASKS, DEMO_ACTIVITY_TIMELINE, DEMO_WEEKLY_BRIEFING } from "@/lib/demo/seed";
 
 export const metadata = { title: "Dashboard — Braxton OS Demo" };
 
 const KPI_CARDS = [
-  { label: "Active Leads",      value: DEMO_KPI.active_leads,     icon: "👥", color: "indigo" },
-  { label: "Open Deals",        value: DEMO_KPI.open_deals,       icon: "💼", color: "emerald" },
-  { label: "Pipeline Value",    value: DEMO_KPI.total_pipeline,   icon: "📈", color: "blue" },
-  { label: "Tasks Due Today",   value: DEMO_KPI.tasks_due_today,  icon: "✅", color: "orange" },
-  { label: "Unread Messages",   value: DEMO_KPI.inbox_unread,     icon: "📬", color: "purple" },
-  { label: "Monthly Revenue",   value: DEMO_KPI.monthly_revenue,  icon: "💰", color: "emerald" },
-  { label: "Conversion Rate",   value: DEMO_KPI.conversion_rate,  icon: "🎯", color: "indigo" },
-  { label: "Avg Deal (days)",   value: DEMO_KPI.avg_deal_days,    icon: "📅", color: "blue" },
+  { label: "Active Leads",     value: DEMO_KPI.active_leads,    icon: "👥" },
+  { label: "Open Deals",       value: DEMO_KPI.open_deals,      icon: "💼" },
+  { label: "Pipeline Value",   value: DEMO_KPI.total_pipeline,  icon: "📈" },
+  { label: "Tasks Due Today",  value: DEMO_KPI.tasks_due_today, icon: "✓"  },
+  { label: "Unread Messages",  value: DEMO_KPI.inbox_unread,    icon: "✉"  },
+  { label: "Monthly Revenue",  value: DEMO_KPI.monthly_revenue, icon: "£"  },
 ];
 
-const colorMap: Record<string, string> = {
-  indigo:  "bg-indigo-900/30 border-indigo-700/40 text-indigo-300",
-  emerald: "bg-emerald-900/30 border-emerald-700/40 text-emerald-300",
-  blue:    "bg-blue-900/30 border-blue-700/40 text-blue-300",
-  orange:  "bg-orange-900/30 border-orange-700/40 text-orange-300",
-  purple:  "bg-purple-900/30 border-purple-700/40 text-purple-300",
+const STAGE_LABELS: Record<string, string> = {
+  proposal:    "Proposal",
+  negotiation: "Negotiation",
+  discovery:   "Discovery",
+  in_progress: "In Progress",
+  closed_won:  "Closed Won",
 };
 
-const MODULE_CARDS = [
-  {
-    href: "/demo/workspace/crm",
-    icon: "👥",
-    title: "CRM",
-    desc: "5 active contacts — 1 hot lead, 2 in proposal stage",
-    cta: "View contacts →",
-  },
-  {
-    href: "/demo/workspace/inbox",
-    icon: "📬",
-    title: "Inbox",
-    desc: "3 conversations open — 2 unread, 1 urgent maintenance request",
-    cta: "Open inbox →",
-  },
-  {
-    href: "/demo/workspace/tasks",
-    icon: "✅",
-    title: "Tasks",
-    desc: "5 tasks — 3 due this week, 1 completed, 1 urgent",
-    cta: "Manage tasks →",
-  },
-  {
-    href: "/demo/workspace/automations",
-    icon: "⚡",
-    title: "Automations",
-    desc: "5 recent events fired — leads scored, tasks auto-created",
-    cta: "View activity →",
-  },
-];
+const STATUS_BADGE: Record<string, string> = {
+  active:   "bg-emerald-50 text-emerald-700 border border-emerald-200",
+  at_risk:  "bg-red-50 text-red-600 border border-red-200",
+  on_hold:  "bg-gray-100 text-gray-500 border border-gray-200",
+  won:      "bg-blue-50 text-blue-700 border border-blue-200",
+};
+
+const PRIORITY_BADGE: Record<string, string> = {
+  urgent:  "bg-red-50 text-red-600 border border-red-200",
+  high:    "bg-orange-50 text-orange-600 border border-orange-200",
+  medium:  "bg-yellow-50 text-yellow-600 border border-yellow-200",
+  low:     "bg-gray-100 text-gray-500 border border-gray-200",
+  overdue: "bg-red-50 text-red-600 border border-red-200",
+};
+
+const overdueTasks  = DEMO_TASKS.filter(t => t.status === "overdue").slice(0, 3);
+const recentDeals   = DEMO_PROJECTS.filter(p => p.type === "deal").slice(0, 3);
+const timelineItems = DEMO_ACTIVITY_TIMELINE.slice(0, 12);
 
 export default function DemoWorkspaceDashboard() {
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-8">
-      {/* Demo context card */}
-      <div className="bg-indigo-900/20 border border-indigo-700/40 rounded-xl px-5 py-4">
-        <p className="text-indigo-300 text-sm">
-          <strong>This is your live demo workspace.</strong> Everything you see is representative
-          seed data — not real client information. Explore freely, then{" "}
-          <Link href="/demo/workspace/reserve" className="underline hover:text-indigo-200">
-            reserve your package
-          </Link>{" "}
-          when you&apos;re ready.
-        </p>
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* Info box */}
+      <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-blue-700 text-sm">
+        See the key movements across your business in one place: leads, tasks, deals, revenue, inbox activity and AI insights.
       </div>
 
       {/* KPI grid */}
-      <div>
-        <h2 className="text-lg font-semibold text-white mb-4">Business at a glance</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {KPI_CARDS.map(k => (
-            <div
-              key={k.label}
-              className={`border rounded-xl p-4 ${colorMap[k.color]}`}
-            >
-              <div className="text-2xl mb-1">{k.icon}</div>
-              <div className="text-2xl font-black text-white">{k.value}</div>
-              <div className="text-xs mt-1 opacity-80">{k.label}</div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        {KPI_CARDS.map(k => (
+          <div key={k.label} className="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+            <div className="text-lg mb-1">{k.icon}</div>
+            <div className="text-2xl font-black text-gray-900">{k.value}</div>
+            <div className="text-xs text-gray-400 mt-1">{k.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Two-column layout */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* LEFT — 2/3 */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Recent Deals */}
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="font-semibold text-gray-900">Recent Deals</h2>
+              <Link href="/demo/workspace/deals" className="text-indigo-600 hover:text-indigo-500 text-sm font-medium">
+                View all →
+              </Link>
             </div>
-          ))}
-        </div>
-      </div>
+            <div className="divide-y divide-gray-100">
+              {recentDeals.map(deal => (
+                <div key={deal.id} className="px-5 py-4">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div>
+                      <div className="font-medium text-gray-900 text-sm">{deal.name}</div>
+                      <div className="text-xs text-gray-400">{deal.contact_name} · {STAGE_LABELS[deal.stage] ?? deal.stage}</div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[deal.status] ?? "bg-gray-100 text-gray-500"}`}>
+                        {deal.status.replace(/_/g, " ")}
+                      </span>
+                      <span className="text-sm font-semibold text-gray-900">
+                        £{deal.value.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-indigo-500 rounded-full transition-all"
+                        style={{ width: `${deal.progress}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-400 shrink-0">{deal.progress}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
-      {/* Module cards */}
-      <div>
-        <h2 className="text-lg font-semibold text-white mb-4">Explore your OS</h2>
-        <div className="grid sm:grid-cols-2 gap-4">
-          {MODULE_CARDS.map(m => (
-            <Link
-              key={m.href}
-              href={m.href}
-              className="bg-gray-900 border border-gray-800 hover:border-indigo-700/50 rounded-xl p-5 transition-colors group"
-            >
-              <div className="text-2xl mb-2">{m.icon}</div>
-              <div className="font-bold text-white mb-1 group-hover:text-indigo-300 transition-colors">{m.title}</div>
-              <div className="text-gray-400 text-sm mb-3">{m.desc}</div>
-              <div className="text-indigo-400 text-sm font-medium">{m.cta}</div>
-            </Link>
-          ))}
-        </div>
-      </div>
+          {/* Overdue Tasks */}
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="font-semibold text-gray-900">Overdue Tasks</h2>
+              <Link href="/demo/workspace/tasks" className="text-indigo-600 hover:text-indigo-500 text-sm font-medium">
+                View all →
+              </Link>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {overdueTasks.map(task => (
+                <div key={task.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-900 truncate">{task.title}</div>
+                      <div className="text-xs text-gray-400">Due {task.due_date}</div>
+                    </div>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${PRIORITY_BADGE[task.priority] ?? "bg-gray-100 text-gray-500"}`}>
+                    {task.priority}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
 
-      {/* Automation feed */}
-      <div>
-        <h2 className="text-lg font-semibold text-white mb-4">Recent automation activity</h2>
-        <div className="bg-gray-900 border border-gray-800 rounded-xl divide-y divide-gray-800">
-          {DEMO_AUTOMATION_FEED.map((a, i) => (
-            <div key={i} className="flex items-center justify-between px-5 py-3">
-              <div className="flex items-center gap-3">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-                <span className="text-sm text-gray-200">{a.label}</span>
-                <span className="text-xs text-gray-500 hidden sm:block">{a.event}</span>
+          {/* AI Weekly Insight */}
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="bg-amber-50 border border-amber-200 text-amber-700 text-xs px-2 py-0.5 rounded-full font-medium">AI Insight</span>
+              <span className="text-xs text-amber-600">{DEMO_WEEKLY_BRIEFING.week}</span>
+            </div>
+            <p className="text-amber-800 text-sm leading-relaxed">{DEMO_WEEKLY_BRIEFING.ai_insight}</p>
+          </div>
+
+          {/* Weekly Goal */}
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold text-gray-900 text-sm">Weekly Goal Progress</h3>
+              <span className="text-sm font-bold text-indigo-600">{DEMO_KPI.weekly_goal_pct}%</span>
+            </div>
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
+              <div
+                className="h-full bg-indigo-500 rounded-full transition-all"
+                style={{ width: `${DEMO_KPI.weekly_goal_pct}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-400">{DEMO_WEEKLY_BRIEFING.weekly_goal}</p>
+          </div>
+        </div>
+
+        {/* RIGHT — 1/3 Activity Timeline */}
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col">
+          <div className="px-5 py-4 border-b border-gray-100">
+            <h2 className="font-semibold text-gray-900">Activity Timeline</h2>
+          </div>
+          <div className="flex-1 overflow-y-auto divide-y divide-gray-50 max-h-[600px]">
+            {timelineItems.map(item => (
+              <div key={item.id} className="px-5 py-3 flex items-start gap-3">
+                <span className="text-base shrink-0 mt-0.5">{item.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-900 leading-snug">{item.label}</div>
+                  <div className="text-xs text-gray-400 mt-0.5 truncate">{item.detail}</div>
+                  <div className="text-xs text-gray-300 mt-0.5">{item.time}</div>
+                </div>
               </div>
-              <span className="text-xs text-gray-500">{a.time}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* CTA strip */}
-      <div className="bg-gradient-to-r from-indigo-900/40 to-purple-900/40 border border-indigo-700/40 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <div className="font-bold text-white text-lg mb-1">Like what you see?</div>
-          <div className="text-gray-400 text-sm">Reserve your build slot and we&apos;ll have your OS live within 2 weeks.</div>
-        </div>
-        <div className="flex gap-3 shrink-0">
-          <Link
-            href="/demo/workspace/reserve"
-            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-5 py-2.5 rounded-lg transition-colors text-sm"
-          >
-            Reserve package →
-          </Link>
+            ))}
+          </div>
         </div>
       </div>
     </div>

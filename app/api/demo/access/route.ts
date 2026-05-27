@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
   const business_name = typeof body.business_name === "string" ? body.business_name.trim() : "";
   const industry = typeof body.industry === "string" ? body.industry.trim() : null;
   const problem = typeof body.problem === "string" ? body.problem.trim() : null;
+  const bottleneck = typeof body.bottleneck === "string" ? body.bottleneck.trim() : null;
 
   if (!name || !email) {
     return NextResponse.json({ error: "name and email are required" }, { status: 400 });
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
         lead_type: "website_app_prospect",
         source: "demo_funnel",
         status: "demo_user",
-        notes: problem ? `Demo user. Problem: ${problem}` : "Demo user via demo funnel.",
+        notes: bottleneck ? `Demo user. Bottleneck: ${bottleneck}` : problem ? `Demo user. Problem: ${problem}` : "Demo user via demo funnel.",
       })
       .select("id")
       .single();
@@ -63,7 +64,8 @@ export async function POST(req: NextRequest) {
     email,
     business_name: business_name || undefined,
     industry: industry || undefined,
-    problem: problem || undefined,
+    problem: bottleneck || problem || undefined,
+    bottleneck: bottleneck || undefined,
     contact_id,
   });
 
@@ -81,7 +83,8 @@ export async function POST(req: NextRequest) {
         email,
         business_name,
         industry,
-        problem,
+        problem: bottleneck || problem,
+        bottleneck,
       }),
       new Promise<void>(r => setTimeout(r, 4000)),
     ]);
