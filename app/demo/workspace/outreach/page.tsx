@@ -24,7 +24,7 @@ const FUNNEL_BADGE: Record<string, string> = {
 
 export default function OutreachPage() {
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Outreach Campaigns</h1>
         <p className="text-gray-500 text-sm mt-1">{DEMO_OUTREACH_CAMPAIGNS.length} campaigns</p>

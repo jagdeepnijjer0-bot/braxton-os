@@ -112,11 +112,12 @@ export default function DemoWorkspaceLayout({ children }: { children: React.Reac
           </span>
           <BookCallButton
             variant="banner"
+            label="Book Strategy Call"
             sessionName={session?.name}
             sessionEmail={session?.email}
           />
           <Link href="/demo/workspace/reserve" className="text-indigo-300 hover:text-white text-xs transition-colors">
-            Reserve package →
+            Reserve Your Build Slot →
           </Link>
         </div>
       </div>
@@ -150,7 +151,7 @@ export default function DemoWorkspaceLayout({ children }: { children: React.Reac
           <div className="p-4 border-t border-gray-800 space-y-2">
             <BookCallButton
               variant="primary"
-              label="Book a strategy call"
+              label="Book Strategy Call"
               sessionName={session?.name}
               sessionEmail={session?.email}
               className="block w-full bg-white text-indigo-900 hover:bg-indigo-50 text-center text-sm font-bold py-2.5 rounded-lg transition-colors"
@@ -159,7 +160,7 @@ export default function DemoWorkspaceLayout({ children }: { children: React.Reac
               href="/demo/workspace/reserve"
               className="block w-full bg-indigo-600 hover:bg-indigo-500 text-white text-center text-sm font-bold py-2.5 rounded-lg transition-colors"
             >
-              Reserve your OS
+              Reserve Your Build Slot
             </Link>
           </div>
         </nav>

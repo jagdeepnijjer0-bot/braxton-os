@@ -41,7 +41,7 @@ const timelineItems = DEMO_ACTIVITY_TIMELINE.slice(0, 12);
 
 export default function DemoWorkspaceDashboard() {
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-6 space-y-6">
       {/* Info box */}
       <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-blue-700 text-sm">
         See the key movements across your business in one place: leads, tasks, deals, revenue, inbox activity and AI insights.
