@@ -4,11 +4,12 @@ import { supabase } from '@/lib/supabase';
 import { UserProfile } from '@/lib/types';
 
 export function useAuth() {
-  const [session, setSession]   = useState<Session | null>(null);
-  const [user, setUser]         = useState<User | null>(null);
-  const [profile, setProfile]   = useState<UserProfile | null>(null);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState<string | null>(null);
+  const [session, setSession]                       = useState<Session | null>(null);
+  const [user, setUser]                             = useState<User | null>(null);
+  const [profile, setProfile]                       = useState<UserProfile | null>(null);
+  const [loading, setLoading]                       = useState(true);
+  const [error, setError]                           = useState<string | null>(null);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -18,12 +19,18 @@ export function useAuth() {
       else setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) {
+
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsPasswordRecovery(true);
+        setLoading(false);
+      } else if (session?.user) {
+        setIsPasswordRecovery(false);
         fetchProfile(session.user.id);
       } else {
+        setIsPasswordRecovery(false);
         setProfile(null);
         setLoading(false);
       }
@@ -39,7 +46,7 @@ export function useAuth() {
       .from('restaurant_profiles')
       .select('*')
       .eq('id', userId)
-      .maybeSingle();          // safe when trigger hasn't fired yet
+      .maybeSingle();
     if (fetchError) {
       setError(fetchError.message);
     } else {
@@ -68,6 +75,19 @@ export function useAuth() {
     setProfile(null);
   }
 
+  async function forgotPassword(email: string) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'braxton://reset-password',
+    });
+    if (error) throw error;
+  }
+
+  async function updatePassword(newPassword: string) {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+    setIsPasswordRecovery(false);
+  }
+
   async function updateProfile(updates: Partial<UserProfile>) {
     if (!user) return;
     const { error } = await supabase
@@ -87,9 +107,12 @@ export function useAuth() {
     profile,
     loading,
     error,
+    isPasswordRecovery,
     signIn,
     signUp,
     signOut,
+    forgotPassword,
+    updatePassword,
     updateProfile,
     refreshProfile,
     isAuthenticated: !!session,
