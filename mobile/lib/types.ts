@@ -91,8 +91,8 @@ export interface UserProfile {
 
 export type MenuCategory =
   | 'all'
-  | 'starters'
-  | 'mains'
-  | 'desserts'
+  | 'breakfast'
+  | 'classics'
   | 'drinks'
-  | 'specials';
+  | 'desserts'
+  | string; // fallback for any future categories added in Supabase without a code change

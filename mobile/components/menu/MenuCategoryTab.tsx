@@ -11,12 +11,11 @@ interface MenuCategoryTabsProps {
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  all: 'All',
-  starters: 'Starters',
-  mains: 'Mains',
-  desserts: 'Desserts',
-  drinks: 'Drinks',
-  specials: 'Specials',
+  all:       'All',
+  breakfast: 'Breakfast',
+  classics:  'Classics',
+  drinks:    'Drinks',
+  desserts:  'Desserts',
 };
 
 export function MenuCategoryTabs({ categories, active, onSelect }: MenuCategoryTabsProps) {
