@@ -1,7 +1,17 @@
 -- ============================================================
 -- Restaurant App Schema
--- Run after existing CRM migrations
 -- ============================================================
+
+-- ============================================================
+-- set_updated_at helper (safe to run even if already exists)
+-- ============================================================
+create or replace function public.set_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
 
 -- ============================================================
 -- RESTAURANT PROFILES
