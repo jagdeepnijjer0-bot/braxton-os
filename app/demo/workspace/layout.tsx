@@ -97,7 +97,7 @@ export default function DemoWorkspaceLayout({ children }: { children: React.Reac
   }
 
   return (
-    <div className="h-screen bg-gray-950 flex flex-col overflow-hidden">
+    <div className="h-screen w-full bg-gray-950 flex flex-col overflow-hidden">
       {/* Demo banner */}
       <div className="bg-indigo-900/80 border-b border-indigo-700/60 px-4 py-2 flex items-center justify-between gap-4 text-sm shrink-0">
         <div className="flex items-center gap-2 text-indigo-200">

@@ -45,7 +45,7 @@ const STATS = [
 
 export default function DemoLandingPage() {
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="w-full min-h-screen bg-gray-950 text-white">
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/30 via-gray-950 to-gray-950 pointer-events-none" />

@@ -68,7 +68,7 @@ export default function DemoAccessPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center px-4 py-12">
+    <div className="w-full min-h-screen bg-gray-950 flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <Link href="/demo" className="text-indigo-400 hover:text-indigo-300 text-sm mb-8 inline-block">
           ← Back to overview
