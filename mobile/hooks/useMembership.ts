@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { RestaurantMembership, CoffeeClaim } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, isPast, parseISO } from 'date-fns';
 
 export function useMembership(userId: string | undefined) {
   const [membership, setMembership] = useState<RestaurantMembership | null>(null);
@@ -69,12 +69,26 @@ export function useMembership(userId: string | undefined) {
     return data;
   }
 
+  // ── Derived membership state ────────────────────────────────────────────────
+
   const isPremium = membership?.status === 'active';
+
   const isPastDue = membership?.status === 'past_due';
-  // Cancelled but still within the paid period — user retains access until period ends
+
+  // User is active but has a cancellation scheduled — access remains until cancel_at / period end
+  const isCancelledPending =
+    membership?.status === 'active' &&
+    !!membership?.cancel_at_period_end;
+
+  // User's subscription is fully cancelled in Stripe but the paid period hasn't expired yet
   const isCancelledWithAccess =
-    membership?.status === 'cancelled' && !!membership?.current_period_end;
+    membership?.status === 'cancelled' &&
+    !!membership?.current_period_end &&
+    !isPast(parseISO(membership.current_period_end));
+
+  // Any state that still grants access to premium features
   const hasAccess = isPremium || isPastDue || isCancelledWithAccess;
+
   const hasClaimedThisMonth = !!coffeeClaim;
 
   return {
@@ -85,6 +99,7 @@ export function useMembership(userId: string | undefined) {
     error,
     isPremium,
     isPastDue,
+    isCancelledPending,
     isCancelledWithAccess,
     hasAccess,
     hasClaimedThisMonth,

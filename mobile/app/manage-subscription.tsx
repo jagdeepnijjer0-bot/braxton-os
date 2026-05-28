@@ -43,6 +43,7 @@ export default function ManageSubscriptionScreen() {
     membership,
     isPremium,
     isPastDue,
+    isCancelledPending,
     isCancelledWithAccess,
     hasAccess,
     loading,
@@ -179,6 +180,18 @@ export default function ManageSubscriptionScreen() {
           </LinearGradient>
         )}
 
+        {/* Scheduled cancellation banner (active, cancel_at_period_end = true) */}
+        {isCancelledPending && membership?.cancel_at && (
+          <View style={styles.cancelledBanner}>
+            <Text style={styles.cancelledIcon}>ℹ️</Text>
+            <Text style={styles.cancelledText}>
+              Your subscription is scheduled to cancel on{' '}
+              {formatPeriodDate(membership.cancel_at)}.
+              You'll keep your benefits until then. Reactivate anytime via the portal.
+            </Text>
+          </View>
+        )}
+
         {/* Cancelled-with-access info banner */}
         {isCancelledWithAccess && (
           <View style={styles.cancelledBanner}>
@@ -209,6 +222,13 @@ export default function ManageSubscriptionScreen() {
                 label={renewsLabel}
                 value={periodLabel()}
                 highlight={membership.status === 'cancelled'}
+              />
+            )}
+            {isCancelledPending && membership.cancel_at && (
+              <DetailRow
+                label="Cancels on"
+                value={formatPeriodDate(membership.cancel_at)}
+                highlight
               />
             )}
             <DetailRow label="Price" value={PLAN_PRICE} isLast />

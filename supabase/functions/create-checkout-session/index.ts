@@ -33,45 +33,64 @@ serve(async (req) => {
     const { priceId } = await req.json();
     if (!priceId) throw new Error('priceId is required');
 
+    // Fetch existing membership row (may not exist yet)
     const { data: membership } = await supabase
       .from('restaurant_memberships')
-      .select('stripe_customer_id')
+      .select('stripe_customer_id, stripe_subscription_id, status')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    let customerId = membership?.stripe_customer_id;
+    // Block re-subscribing over an active subscription
+    if (membership?.status === 'active' && membership?.stripe_subscription_id) {
+      throw new Error('You already have an active subscription. Manage it from the portal.');
+    }
+
+    let customerId = membership?.stripe_customer_id ?? null;
 
     if (!customerId) {
+      // Create a new Stripe customer linked to this Supabase user
       const customer = await stripe.customers.create({
         email: user.email,
         metadata: { supabase_user_id: user.id },
       });
       customerId = customer.id;
 
-      await supabase.from('restaurant_memberships').upsert({
-        user_id: user.id,
-        stripe_customer_id: customerId,
-        status: 'inactive',
-      });
+      // Upsert the membership row with the new customer ID
+      await supabase.from('restaurant_memberships').upsert(
+        {
+          user_id:            user.id,
+          stripe_customer_id: customerId,
+          status:             'inactive',
+          plan:               'premium',
+        },
+        { onConflict: 'user_id' },
+      );
     }
 
+    // Create the Checkout Session
+    // success_url uses {CHECKOUT_SESSION_ID} — Stripe replaces this at redirect time
     const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      payment_method_types: ['card'],
-      line_items: [{ price: priceId, quantity: 1 }],
-      mode: 'subscription',
-      success_url: `${Deno.env.get('APP_URL') ?? 'braxton://'}subscription-success`,
-      cancel_url: `${Deno.env.get('APP_URL') ?? 'braxton://'}subscription-cancel`,
+      customer:              customerId,
+      payment_method_types:  ['card'],
+      line_items:            [{ price: priceId, quantity: 1 }],
+      mode:                  'subscription',
+      allow_promotion_codes: true,
+      success_url:           'braxton://subscription-success?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url:            'braxton://subscription-cancel',
+      subscription_data: {
+        metadata: { supabase_user_id: user.id },
+      },
       metadata: { supabase_user_id: user.id },
     });
 
-    return new Response(JSON.stringify({ url: session.url }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ url: session.url, sessionId: session.id }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
   } catch (err) {
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ error: (err as Error).message }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
   }
 });

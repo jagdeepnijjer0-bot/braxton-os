@@ -17,6 +17,8 @@ function parseHashParams(url: string): Record<string, string> {
 
 async function handleDeepLink(url: string | null) {
   if (!url) return;
+
+  // ── Password reset (braxton://reset-password#access_token=...&type=recovery) ──
   const params = parseHashParams(url);
   if (params.type === 'recovery' && params.access_token && params.refresh_token) {
     await supabase.auth.setSession({
@@ -24,6 +26,15 @@ async function handleDeepLink(url: string | null) {
       refresh_token: params.refresh_token,
     });
     router.replace('/reset-password');
+    return;
+  }
+
+  // ── Subscription success (cold-start from Stripe redirect) ─────────────────
+  // Normal flow: openAuthSessionAsync in membership.tsx handles this inline.
+  // This covers the rare case where the app was not running when Stripe redirected.
+  if (url.includes('subscription-success')) {
+    router.replace('/subscription-success');
+    return;
   }
 }
 
@@ -42,13 +53,14 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.background } }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="about"               options={{ presentation: 'card' }} />
-        <Stack.Screen name="reservations"        options={{ presentation: 'card' }} />
-        <Stack.Screen name="membership"          options={{ presentation: 'modal' }} />
-        <Stack.Screen name="coffee-claim"        options={{ presentation: 'modal' }} />
-        <Stack.Screen name="contact"             options={{ presentation: 'card' }} />
-        <Stack.Screen name="manage-subscription" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="reset-password"      options={{ presentation: 'modal' }} />
+        <Stack.Screen name="about"                 options={{ presentation: 'card' }} />
+        <Stack.Screen name="reservations"          options={{ presentation: 'card' }} />
+        <Stack.Screen name="membership"            options={{ presentation: 'modal' }} />
+        <Stack.Screen name="coffee-claim"          options={{ presentation: 'modal' }} />
+        <Stack.Screen name="contact"               options={{ presentation: 'card' }} />
+        <Stack.Screen name="manage-subscription"   options={{ presentation: 'modal' }} />
+        <Stack.Screen name="reset-password"        options={{ presentation: 'modal' }} />
+        <Stack.Screen name="subscription-success"  options={{ presentation: 'modal' }} />
       </Stack>
     </StripeProvider>
   );
