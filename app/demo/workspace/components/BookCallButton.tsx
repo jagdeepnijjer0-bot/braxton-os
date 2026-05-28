@@ -11,6 +11,7 @@ interface Props {
   sessionName?: string;
   sessionEmail?: string;
   variant?: "primary" | "ghost" | "banner";
+  onOpen?: () => void;
 }
 
 export default function BookCallButton({
@@ -19,10 +20,11 @@ export default function BookCallButton({
   sessionName,
   sessionEmail,
   variant = "primary",
+  onOpen,
 }: Props) {
   const [open, setOpen] = useState(false);
 
-  const handleOpen = useCallback(() => setOpen(true), []);
+  const handleOpen = useCallback(() => { onOpen?.(); setOpen(true); }, [onOpen]);
   const handleClose = useCallback(() => setOpen(false), []);
 
   const variantClass = {

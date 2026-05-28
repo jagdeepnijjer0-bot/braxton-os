@@ -32,6 +32,7 @@ const PAGE_EVENTS: Record<string, string> = {
   "/demo/workspace/reports":      "reports_viewed",
   "/demo/workspace/automations":  "automations_viewed",
   "/demo/workspace/reserve":      "reserve_viewed",
+  "/demo/services":               "demo_services_viewed",
 };
 
 function msToHMS(ms: number) {
@@ -110,6 +111,9 @@ export default function DemoWorkspaceLayout({ children }: { children: React.Reac
           <span className="text-indigo-300 font-mono text-xs hidden sm:block">
             Expires in {msToHMS(timeLeft)}
           </span>
+          <Link href="/demo/services" className="bg-indigo-700/60 hover:bg-indigo-600 text-indigo-100 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors border border-indigo-600/50">
+            What We Build
+          </Link>
           <BookCallButton
             variant="banner"
             label="Book Strategy Call"
@@ -148,6 +152,21 @@ export default function DemoWorkspaceLayout({ children }: { children: React.Reac
               );
             })}
           </div>
+          {/* What We Build — persistent services link */}
+          <div className="px-2 pb-3 shrink-0">
+            <Link
+              href="/demo/services"
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition-colors border ${
+                pathname === "/demo/services"
+                  ? "bg-indigo-700/30 text-indigo-300 border-indigo-700/40"
+                  : "text-indigo-400 border-indigo-800/60 hover:bg-indigo-800/30 hover:text-indigo-300"
+              }`}
+            >
+              <span className="text-base w-5 text-center">🔧</span>
+              What We Build
+            </Link>
+          </div>
+
           {/* Sticky bottom buttons — always visible */}
           <div className="p-4 border-t border-gray-800 space-y-2 shrink-0">
             <BookCallButton
