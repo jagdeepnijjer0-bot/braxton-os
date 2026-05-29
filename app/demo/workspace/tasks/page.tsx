@@ -1,6 +1,7 @@
-import { DEMO_TASKS } from "@/lib/demo/seed";
+"use client";
 
-export const metadata = { title: "Tasks — Braxton OS Demo" };
+import { useState } from "react";
+import { DEMO_TASKS } from "@/lib/demo/seed";
 
 const PRIORITY_BADGE: Record<string, string> = {
   urgent: "bg-red-50 text-red-600 border border-red-200",
@@ -18,26 +19,55 @@ const TYPE_ICONS: Record<string, string> = {
   maintenance: "🔧",
 };
 
-const overdueTasks    = DEMO_TASKS.filter(t => t.status === "overdue");
-const activeTasks     = DEMO_TASKS.filter(t => t.status === "todo" || t.status === "in_progress");
-const completedTasks  = DEMO_TASKS.filter(t => t.status === "completed");
+type Task = typeof DEMO_TASKS[number];
 
 export default function TasksPage() {
+  const [completedIds, setCompletedIds] = useState<Set<string>>(
+    () => new Set(DEMO_TASKS.filter(t => t.status === "completed").map(t => t.id))
+  );
+
+  function toggleComplete(id: string) {
+    setCompletedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  const overdueTasks   = DEMO_TASKS.filter(t => t.status === "overdue" && !completedIds.has(t.id));
+  const activeTasks    = DEMO_TASKS.filter(t => (t.status === "todo" || t.status === "in_progress") && !completedIds.has(t.id));
+  const completedTasks = DEMO_TASKS.filter(t => completedIds.has(t.id));
+
+  const totalOutstanding = overdueTasks.length + activeTasks.length;
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Tasks</h1>
-          <p className="text-gray-500 text-sm mt-1">{DEMO_TASKS.length} tasks — {overdueTasks.length} overdue</p>
+          <p className="text-gray-500 text-sm mt-1">
+            {totalOutstanding} outstanding — {overdueTasks.length} overdue
+          </p>
         </div>
-        <div className="bg-red-50 text-red-600 text-xs px-3 py-1.5 rounded-lg border border-red-200 font-semibold">
-          {overdueTasks.length} overdue
-        </div>
+        {overdueTasks.length > 0 && (
+          <div className="bg-red-50 text-red-600 text-xs px-3 py-1.5 rounded-lg border border-red-200 font-semibold">
+            {overdueTasks.length} overdue
+          </div>
+        )}
+        {overdueTasks.length === 0 && totalOutstanding === 0 && (
+          <div className="bg-emerald-50 text-emerald-700 text-xs px-3 py-1.5 rounded-lg border border-emerald-200 font-semibold">
+            All clear ✓
+          </div>
+        )}
       </div>
 
       {/* Info box */}
       <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-blue-700 text-sm">
-        Track outstanding, overdue and unread actions that need human attention.
+        Track outstanding, overdue and completed actions. Click the circle to mark a task complete.
       </div>
 
       {/* Overdue */}
@@ -52,13 +82,18 @@ export default function TasksPage() {
           </div>
           <div className="space-y-2">
             {overdueTasks.map(task => (
-              <TaskRow key={task.id} task={task} variant="overdue" />
+              <TaskRow
+                key={task.id}
+                task={task}
+                variant="overdue"
+                onComplete={() => toggleComplete(task.id)}
+              />
             ))}
           </div>
         </div>
       )}
 
-      {/* Due Today / This Week */}
+      {/* Due This Week */}
       {activeTasks.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-3">
@@ -70,7 +105,12 @@ export default function TasksPage() {
           </div>
           <div className="space-y-2">
             {activeTasks.map(task => (
-              <TaskRow key={task.id} task={task} variant="active" />
+              <TaskRow
+                key={task.id}
+                task={task}
+                variant="active"
+                onComplete={() => toggleComplete(task.id)}
+              />
             ))}
           </div>
         </div>
@@ -82,10 +122,18 @@ export default function TasksPage() {
           <div className="flex items-center gap-2 mb-3">
             <div className="w-1 h-4 bg-gray-300 rounded-full" />
             <h2 className="font-semibold text-gray-400">Completed</h2>
+            <span className="text-xs bg-gray-100 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full font-medium">
+              {completedTasks.length}
+            </span>
           </div>
           <div className="space-y-2 opacity-60">
             {completedTasks.map(task => (
-              <TaskRow key={task.id} task={task} variant="completed" />
+              <TaskRow
+                key={task.id}
+                task={task}
+                variant="completed"
+                onComplete={() => toggleComplete(task.id)}
+              />
             ))}
           </div>
         </div>
@@ -97,39 +145,47 @@ export default function TasksPage() {
 function TaskRow({
   task,
   variant,
+  onComplete,
 }: {
-  task: typeof DEMO_TASKS[number];
+  task: Task;
   variant: "overdue" | "active" | "completed";
+  onComplete: () => void;
 }) {
   return (
-    <div className={`bg-white rounded-xl px-5 py-3.5 flex items-center gap-3 shadow-sm ${
+    <div className={`bg-white rounded-xl px-5 py-3.5 flex items-center gap-3 shadow-sm transition-all ${
       variant === "overdue"
         ? "border border-red-200"
         : variant === "completed"
         ? "border border-gray-100"
         : "border border-gray-200"
     }`}>
-      {/* Check circle */}
-      <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
-        variant === "completed"
-          ? "border-emerald-400 bg-emerald-50"
-          : variant === "overdue"
-          ? "border-red-400"
-          : "border-gray-300"
-      }`}>
+      {/* Check circle — clickable */}
+      <button
+        onClick={onComplete}
+        aria-label={variant === "completed" ? "Mark incomplete" : "Mark complete"}
+        className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-all hover:scale-110 ${
+          variant === "completed"
+            ? "border-emerald-400 bg-emerald-400 hover:bg-emerald-300 hover:border-emerald-300"
+            : variant === "overdue"
+            ? "border-red-300 hover:border-emerald-400 hover:bg-emerald-50"
+            : "border-gray-300 hover:border-emerald-400 hover:bg-emerald-50"
+        }`}
+      >
         {variant === "completed" && (
-          <svg className="w-2.5 h-2.5 text-emerald-500" fill="none" viewBox="0 0 12 12">
+          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 12 12">
             <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         )}
-      </div>
+      </button>
 
       {/* Icon */}
       <span className="text-base shrink-0">{TYPE_ICONS[task.task_type] ?? "✓"}</span>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <div className={`text-sm font-medium ${variant === "completed" ? "line-through text-gray-400" : "text-gray-900"}`}>
+        <div className={`text-sm font-medium transition-all ${
+          variant === "completed" ? "line-through text-gray-400" : "text-gray-900"
+        }`}>
           {task.title}
         </div>
         <div className="flex items-center gap-2 mt-0.5">
@@ -144,7 +200,11 @@ function TaskRow({
 
       {/* Meta */}
       <div className="flex items-center gap-2 shrink-0">
-        <span className="text-xs text-gray-400">{task.due_date}</span>
+        {variant === "completed" ? (
+          <span className="text-xs text-emerald-600 font-medium">Done</span>
+        ) : (
+          <span className="text-xs text-gray-400">{task.due_date}</span>
+        )}
         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PRIORITY_BADGE[task.priority] ?? "bg-gray-100 text-gray-500"}`}>
           {task.priority}
         </span>

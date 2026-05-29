@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { DEMO_PROJECTS } from "@/lib/demo/seed";
 
 const TYPE_BADGE: Record<string, string> = {
@@ -135,6 +135,8 @@ function ProjectCard({
   );
 }
 
+type UploadedFile = { name: string; preview?: string; isImage: boolean };
+
 function DetailPanel({
   project,
   files,
@@ -144,6 +146,30 @@ function DetailPanel({
   files: string[];
   onClose: () => void;
 }) {
+  const [uploads, setUploads] = useState<UploadedFile[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Revoke object URLs on unmount to avoid memory leaks
+  useEffect(() => {
+    return () => { uploads.forEach(u => { if (u.preview) URL.revokeObjectURL(u.preview); }); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleFiles(fileList: FileList | null) {
+    if (!fileList) return;
+    const added: UploadedFile[] = Array.from(fileList).map(f => ({
+      name: f.name,
+      isImage: f.type.startsWith("image/"),
+      preview: f.type.startsWith("image/") ? URL.createObjectURL(f) : undefined,
+    }));
+    setUploads(prev => [...prev, ...added]);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    handleFiles(e.dataTransfer.files);
+  }
+
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
@@ -151,11 +177,10 @@ function DetailPanel({
           <h2 className="font-semibold text-gray-900">{project.name}</h2>
           <p className="text-xs text-gray-400 mt-0.5">{project.contact_name}</p>
         </div>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 text-lg leading-none px-2"
-        >
-          ×
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
         </button>
       </div>
 
@@ -199,25 +224,16 @@ function DetailPanel({
           </div>
         </div>
 
-        {/* Cost breakdown (projects only) */}
+        {/* Cost breakdown */}
         {project.cost_in !== null && (
           <div>
             <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Cost Breakdown</div>
             <div className="bg-gray-50 rounded-lg overflow-hidden">
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-gray-200">
-                  <tr>
-                    <td className="px-4 py-2 text-gray-600">Income (cost in)</td>
-                    <td className="px-4 py-2 text-right font-medium text-gray-900">£{(project.cost_in ?? 0).toLocaleString()}</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-2 text-gray-600">Costs (cost out)</td>
-                    <td className="px-4 py-2 text-right font-medium text-gray-900">£{(project.cost_out ?? 0).toLocaleString()}</td>
-                  </tr>
-                  <tr className="bg-emerald-50">
-                    <td className="px-4 py-2 text-emerald-700 font-semibold">Profit</td>
-                    <td className="px-4 py-2 text-right font-bold text-emerald-700">£{(project.profit ?? 0).toLocaleString()}</td>
-                  </tr>
+                  <tr><td className="px-4 py-2 text-gray-600">Income</td><td className="px-4 py-2 text-right font-medium text-gray-900">£{(project.cost_in ?? 0).toLocaleString()}</td></tr>
+                  <tr><td className="px-4 py-2 text-gray-600">Costs</td><td className="px-4 py-2 text-right font-medium text-gray-900">£{(project.cost_out ?? 0).toLocaleString()}</td></tr>
+                  <tr className="bg-emerald-50"><td className="px-4 py-2 text-emerald-700 font-semibold">Profit</td><td className="px-4 py-2 text-right font-bold text-emerald-700">£{(project.profit ?? 0).toLocaleString()}</td></tr>
                 </tbody>
               </table>
             </div>
@@ -240,33 +256,54 @@ function DetailPanel({
           </div>
         )}
 
-        {/* Tasks */}
+        {/* Existing files */}
         <div>
-          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-            Tasks ({project.tasks_count})
-          </div>
+          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Files ({project.files_count + uploads.length})</div>
           <div className="space-y-1.5">
-            {Array.from({ length: Math.min(project.tasks_count, 3) }).map((_, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm text-gray-600">
-                <div className="w-3.5 h-3.5 rounded border border-gray-300 shrink-0" />
-                <span>Task {i + 1} — {["Follow up", "Send document", "Schedule call"][i] ?? "Action item"}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Files */}
-        <div>
-          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-            Files ({project.files_count})
-          </div>
-          <div className="space-y-1.5">
-            {files.map((f) => (
+            {files.map(f => (
               <div key={f} className="flex items-center gap-2 text-sm text-gray-600">
                 <span className="text-base">📄</span>
                 <span className="truncate">{f}</span>
               </div>
             ))}
+            {/* Demo-uploaded files */}
+            {uploads.map((u, i) => (
+              <div key={i} className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-lg p-2">
+                {u.preview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={u.preview} alt={u.name} className="w-10 h-10 object-cover rounded-md shrink-0 border border-indigo-200" />
+                ) : (
+                  <span className="text-xl shrink-0">📄</span>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-800 truncate">{u.name}</div>
+                  <div className="text-xs text-indigo-600 font-medium">Uploaded in demo mode</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Demo upload area */}
+        <div>
+          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Upload File or Image</div>
+          <div
+            className="border-2 border-dashed border-gray-200 rounded-xl p-5 text-center hover:border-indigo-300 hover:bg-indigo-50/30 transition-colors cursor-pointer"
+            onClick={() => inputRef.current?.click()}
+            onDragOver={e => e.preventDefault()}
+            onDrop={handleDrop}
+          >
+            <div className="text-2xl mb-2">📎</div>
+            <p className="text-sm text-gray-500 mb-1">Click to upload or drag &amp; drop</p>
+            <p className="text-xs text-gray-400">Images, PDFs, documents — demo mode</p>
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+              className="hidden"
+              onChange={e => handleFiles(e.target.files)}
+            />
           </div>
         </div>
       </div>

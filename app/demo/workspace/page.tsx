@@ -4,12 +4,12 @@ import { DEMO_KPI, DEMO_PROJECTS, DEMO_TASKS, DEMO_ACTIVITY_TIMELINE, DEMO_WEEKL
 export const metadata = { title: "Dashboard — Braxton OS Demo" };
 
 const KPI_CARDS = [
-  { label: "Active Leads",     value: DEMO_KPI.active_leads,    icon: "👥" },
-  { label: "Open Deals",       value: DEMO_KPI.open_deals,      icon: "💼" },
-  { label: "Pipeline Value",   value: DEMO_KPI.total_pipeline,  icon: "📈" },
-  { label: "Tasks Due Today",  value: DEMO_KPI.tasks_due_today, icon: "✓"  },
-  { label: "Unread Messages",  value: DEMO_KPI.inbox_unread,    icon: "✉"  },
-  { label: "Monthly Revenue",  value: DEMO_KPI.monthly_revenue, icon: "£"  },
+  { label: "Active Leads",     value: DEMO_KPI.active_leads,    icon: "👥", href: "/demo/workspace/crm"     },
+  { label: "Open Deals",       value: DEMO_KPI.open_deals,      icon: "💼", href: "/demo/workspace/deals"   },
+  { label: "Pipeline Value",   value: DEMO_KPI.total_pipeline,  icon: "📈", href: "/demo/workspace/deals"   },
+  { label: "Tasks Due Today",  value: DEMO_KPI.tasks_due_today, icon: "✓",  href: "/demo/workspace/tasks"   },
+  { label: "Unread Messages",  value: DEMO_KPI.inbox_unread,    icon: "✉",  href: "/demo/workspace/inbox"   },
+  { label: "Monthly Revenue",  value: DEMO_KPI.monthly_revenue, icon: "£",  href: "/demo/workspace/finance" },
 ];
 
 const STAGE_LABELS: Record<string, string> = {
@@ -47,14 +47,18 @@ export default function DemoWorkspaceDashboard() {
         See the key movements across your business in one place: leads, tasks, deals, revenue, inbox activity and AI insights.
       </div>
 
-      {/* KPI grid */}
+      {/* KPI grid — each card is a clickable Link */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         {KPI_CARDS.map(k => (
-          <div key={k.label} className="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+          <Link
+            key={k.label}
+            href={k.href}
+            className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 cursor-pointer hover:border-indigo-300 hover:shadow-md transition-all group"
+          >
             <div className="text-lg mb-1">{k.icon}</div>
-            <div className="text-2xl font-black text-gray-900">{k.value}</div>
+            <div className="text-2xl font-black text-gray-900 group-hover:text-indigo-600 transition-colors">{k.value}</div>
             <div className="text-xs text-gray-400 mt-1">{k.label}</div>
-          </div>
+          </Link>
         ))}
       </div>
 
@@ -72,7 +76,7 @@ export default function DemoWorkspaceDashboard() {
             </div>
             <div className="divide-y divide-gray-100">
               {recentDeals.map(deal => (
-                <div key={deal.id} className="px-5 py-4">
+                <Link key={deal.id} href="/demo/workspace/deals" className="block px-5 py-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div>
                       <div className="font-medium text-gray-900 text-sm">{deal.name}</div>
@@ -89,14 +93,11 @@ export default function DemoWorkspaceDashboard() {
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-indigo-500 rounded-full transition-all"
-                        style={{ width: `${deal.progress}%` }}
-                      />
+                      <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${deal.progress}%` }} />
                     </div>
                     <span className="text-xs text-gray-400 shrink-0">{deal.progress}%</span>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -111,7 +112,7 @@ export default function DemoWorkspaceDashboard() {
             </div>
             <div className="divide-y divide-gray-100">
               {overdueTasks.map(task => (
-                <div key={task.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                <Link key={task.id} href="/demo/workspace/tasks" className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
                     <div className="flex-1 min-w-0">
@@ -122,7 +123,7 @@ export default function DemoWorkspaceDashboard() {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${PRIORITY_BADGE[task.priority] ?? "bg-gray-100 text-gray-500"}`}>
                     {task.priority}
                   </span>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -143,10 +144,7 @@ export default function DemoWorkspaceDashboard() {
               <span className="text-sm font-bold text-indigo-600">{DEMO_KPI.weekly_goal_pct}%</span>
             </div>
             <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
-              <div
-                className="h-full bg-indigo-500 rounded-full transition-all"
-                style={{ width: `${DEMO_KPI.weekly_goal_pct}%` }}
-              />
+              <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${DEMO_KPI.weekly_goal_pct}%` }} />
             </div>
             <p className="text-xs text-gray-400">{DEMO_WEEKLY_BRIEFING.weekly_goal}</p>
           </div>
