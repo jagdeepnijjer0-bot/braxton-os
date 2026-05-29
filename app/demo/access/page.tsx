@@ -89,7 +89,7 @@ export default function DemoAccessPage() {
                 name="name"
                 required
                 placeholder="Jane Smith"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-base placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
@@ -100,7 +100,7 @@ export default function DemoAccessPage() {
                 type="email"
                 required
                 placeholder="jane@company.com"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-base placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
@@ -109,7 +109,7 @@ export default function DemoAccessPage() {
               <input
                 name="business_name"
                 placeholder="Smith Properties Ltd"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-base placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
@@ -117,7 +117,7 @@ export default function DemoAccessPage() {
               <label className="block text-sm font-medium text-gray-300 mb-1">Industry</label>
               <select
                 name="industry"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-base focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">Select (optional)</option>
                 {INDUSTRIES.map(i => (
@@ -133,7 +133,7 @@ export default function DemoAccessPage() {
               <select
                 name="bottleneck"
                 required
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-base focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">Select your main challenge</option>
                 {BOTTLENECK_OPTIONS.map(opt => (
