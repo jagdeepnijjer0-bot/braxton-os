@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import type { DemoSession } from "@/lib/demo/session";
@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { href: "/demo/workspace/tasks",        label: "Tasks",            icon: "✓" },
   { href: "/demo/workspace/calendar",     label: "Calendar",         icon: "📅" },
   { href: "/demo/workspace/reports",      label: "Reports",          icon: "📊" },
+  { href: "/demo/workspace/automations",  label: "Automations",      icon: "⚡" },
 ];
 
 const PAGE_EVENTS: Record<string, string> = {
@@ -71,6 +72,7 @@ export default function DemoWorkspaceLayout({ children }: { children: React.Reac
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
 
   const track = useCallback((event_type: string, metadata?: Record<string, unknown>) => {
     void fetch("/api/demo/track", {
@@ -111,9 +113,10 @@ export default function DemoWorkspaceLayout({ children }: { children: React.Reac
     return () => clearInterval(id);
   }, [session]);
 
-  // Close mobile menu on navigation
+  // Close mobile menu on navigation and scroll main content to top
   useEffect(() => {
     setMobileMenuOpen(false);
+    mainRef.current?.scrollTo({ top: 0, behavior: "instant" });
   }, [pathname]);
 
   // Lock scroll when mobile menu open
@@ -172,7 +175,7 @@ export default function DemoWorkspaceLayout({ children }: { children: React.Reac
       <div className="lg:hidden bg-gray-900 border-b border-gray-800 px-3 py-3 flex items-center justify-between shrink-0">
         <button
           onClick={() => setMobileMenuOpen(true)}
-          className="text-gray-400 hover:text-white p-2 -ml-1 rounded-lg hover:bg-gray-800 transition-colors"
+          className="text-gray-400 hover:text-white p-2.5 -ml-1.5 rounded-lg hover:bg-gray-800 transition-colors"
           aria-label="Open navigation"
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -316,7 +319,7 @@ export default function DemoWorkspaceLayout({ children }: { children: React.Reac
         </div>
 
         {/* Main content */}
-        <main className="flex-1 min-w-0 overflow-y-auto bg-gray-50">
+        <main ref={mainRef} className="flex-1 min-w-0 overflow-y-auto bg-gray-50">
           {children}
         </main>
       </div>

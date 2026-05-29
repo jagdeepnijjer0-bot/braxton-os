@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import AppShell, { type ShellProfile } from "./components/AppShell";
 import { ToastProvider } from "./components/ui/Toast";
@@ -7,6 +7,11 @@ import { createServerClient } from "@/lib/supabase/server";
 export const metadata: Metadata = {
   title: "Braxton OS",
   description: "Business operating system for modern teams",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default async function RootLayout({

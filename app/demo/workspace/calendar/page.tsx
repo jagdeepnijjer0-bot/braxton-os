@@ -49,7 +49,7 @@ export default function CalendarPage() {
     <div className="p-4 sm:p-6 space-y-6">
       {/* Toast */}
       {toast && (
-        <div className="fixed top-6 right-6 z-50 bg-gray-900 text-white text-sm px-4 py-3 rounded-xl shadow-lg max-w-sm">
+        <div className="fixed top-4 right-4 left-4 sm:left-auto sm:top-6 sm:right-6 z-50 bg-gray-900 text-white text-sm px-4 py-3 rounded-xl shadow-lg sm:max-w-sm">
           {toast}
         </div>
       )}
@@ -186,13 +186,13 @@ export default function CalendarPage() {
               <div className="grid grid-cols-2 gap-2 pt-2">
                 <button
                   onClick={() => showToast("This would open the edit form in the full build")}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium py-3 rounded-lg transition-colors"
                 >
                   Edit event
                 </button>
                 <button
                   onClick={() => showToast("This would open the reschedule form in the full build")}
-                  className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium py-2.5 rounded-lg transition-colors"
+                  className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium py-3 rounded-lg transition-colors"
                 >
                   Reschedule
                 </button>

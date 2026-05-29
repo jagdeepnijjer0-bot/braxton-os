@@ -75,7 +75,7 @@ export default function ReportsPage() {
       {/* Revenue vs Expenses */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
         <h3 className="font-semibold text-gray-900 mb-4">Revenue vs Expenses — This Week</h3>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
             <div className="text-xl font-black text-emerald-700">{DEMO_WEEKLY_BRIEFING.revenue_this_week}</div>
             <div className="text-xs text-emerald-600 mt-1 font-medium">Revenue</div>

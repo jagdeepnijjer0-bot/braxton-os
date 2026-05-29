@@ -144,7 +144,7 @@ export default function ServicesPage() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="15 18 9 12 15 6"/>
             </svg>
-            <span className="hidden sm:block">Back to demo</span>
+            <span>Back</span>
           </Link>
           <div className="hidden sm:block w-px h-4 bg-gray-700" />
           <span className="text-white font-black text-base tracking-tight">Braxton OS</span>
@@ -218,7 +218,7 @@ export default function ServicesPage() {
             These are illustrative examples of the kind of outcomes our systems are designed to produce.
           </p>
         </div>
-        <div className="grid sm:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-6">
           {TRANSFORMATIONS.map(t => (
             <div key={t.title} className="border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
               <div className="bg-indigo-600 px-5 py-3 flex items-center gap-2">

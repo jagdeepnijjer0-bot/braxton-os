@@ -167,7 +167,7 @@ export default function InboxPage() {
                     }`}
                   >
                     <div className="text-xs font-semibold mb-1 opacity-60">{msg.sender_name}</div>
-                    <div className="leading-relaxed">{msg.body}</div>
+                    <div className="leading-relaxed break-words">{msg.body}</div>
                     <div className="text-xs opacity-50 mt-1.5 text-right">{msg.time}</div>
                   </div>
                 </div>

@@ -180,7 +180,7 @@ export default function DemoReservePage() {
                 ref={firstFieldRef}
                 value={timeframe}
                 onChange={e => setTimeframe(e.target.value)}
-                className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 text-base focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">Select a timeframe</option>
                 {TIMEFRAMES.map(t => <option key={t} value={t}>{t}</option>)}
@@ -196,7 +196,7 @@ export default function DemoReservePage() {
                 value={outcome}
                 onChange={e => setOutcome(e.target.value)}
                 placeholder="E.g. reduce manual admin, get full visibility across deals and projects…"
-                className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 text-base placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
@@ -209,7 +209,7 @@ export default function DemoReservePage() {
                 onChange={e => setNotes(e.target.value)}
                 rows={3}
                 placeholder="Team size, current tools, biggest challenges…"
-                className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none text-sm"
+                className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 text-base placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
               />
             </div>
           </div>

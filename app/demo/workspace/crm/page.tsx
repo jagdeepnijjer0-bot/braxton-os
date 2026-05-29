@@ -97,7 +97,7 @@ export default function CRMPage() {
                           {c.status.replace(/_/g, " ")}
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-xs text-gray-500">{c.bottleneck}</td>
+                      <td className="px-5 py-3 text-xs text-gray-500 max-w-[160px]"><span className="block truncate">{c.bottleneck}</span></td>
                       <td className="px-5 py-3 text-xs text-gray-400">{c.last_activity}</td>
                       <td className="px-5 py-3">
                         <button
