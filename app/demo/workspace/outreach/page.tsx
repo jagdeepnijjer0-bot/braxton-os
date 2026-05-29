@@ -57,7 +57,7 @@ export default function OutreachPage() {
   const selected = selectedId ? DEMO_OUTREACH_CAMPAIGNS.find(c => c.id === selectedId) ?? null : null;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Outreach Campaigns</h1>
         <p className="text-gray-500 text-sm mt-1">{DEMO_OUTREACH_CAMPAIGNS.length} campaigns</p>

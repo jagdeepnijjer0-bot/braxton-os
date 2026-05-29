@@ -16,18 +16,16 @@ const INDUSTRIES = [
 ];
 
 const BOTTLENECK_OPTIONS = [
-  "Lead generation",
-  "Lead follow-up",
-  "Organisation / admin",
+  "Generating leads",
+  "Following up leads",
+  "Managing projects",
   "Team communication",
-  "Project tracking",
-  "Client management",
-  "Sales process",
-  "Marketing consistency",
-  "Finance visibility",
-  "Scaling operations",
-  "Too many manual tasks",
-  "No central system",
+  "Admin workload",
+  "Reporting & visibility",
+  "Customer service",
+  "Marketing",
+  "Multiple systems not connected",
+  "Other",
 ];
 
 export default function DemoAccessPage() {

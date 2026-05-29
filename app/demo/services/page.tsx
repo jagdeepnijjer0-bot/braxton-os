@@ -135,21 +135,21 @@ export default function ServicesPage() {
   return (
     <div className="w-full min-h-screen bg-white">
       {/* Top nav */}
-      <header className="w-full bg-gray-950 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <header className="w-full bg-gray-950 border-b border-gray-800 px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <Link
             href="/demo/workspace"
-            className="text-gray-400 hover:text-white text-sm transition-colors flex items-center gap-1.5"
+            className="text-gray-400 hover:text-white text-sm transition-colors flex items-center gap-1.5 shrink-0"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="15 18 9 12 15 6"/>
             </svg>
-            Back to demo
+            <span className="hidden sm:block">Back to demo</span>
           </Link>
-          <div className="w-px h-4 bg-gray-700" />
+          <div className="hidden sm:block w-px h-4 bg-gray-700" />
           <span className="text-white font-black text-base tracking-tight">Braxton OS</span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 shrink-0">
           <BookCallButton
             variant="banner"
             label="Book Strategy Call"
@@ -158,7 +158,7 @@ export default function ServicesPage() {
           <Link
             href="/demo/workspace/reserve"
             onClick={() => track("demo_services_cta_clicked")}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+            className="hidden sm:block bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
           >
             Reserve Your Build Slot
           </Link>

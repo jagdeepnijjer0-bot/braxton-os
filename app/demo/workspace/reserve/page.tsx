@@ -93,7 +93,7 @@ export default function DemoReservePage() {
   }
 
   return (
-    <div className="min-h-full bg-gray-50 p-6 space-y-8">
+    <div className="min-h-full bg-gray-50 p-4 sm:p-6 space-y-8">
       {/* Header */}
       <div className="max-w-2xl">
         <h1 className="text-2xl font-black text-gray-900 mb-2">Reserve Your Build Slot</h1>

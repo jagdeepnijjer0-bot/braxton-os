@@ -28,22 +28,36 @@ const PRIORITY_BADGE: Record<string, string> = {
 
 export default function InboxPage() {
   const [selectedId, setSelectedId] = useState<string | null>(DEMO_INBOX_THREADS[0]?.id ?? null);
-  const selected = selectedId ? DEMO_INBOX_THREADS.find(t => t.id === selectedId) ?? null : null;
+  const [mobileView, setMobileView] = useState<"list" | "detail">(
+    DEMO_INBOX_THREADS[0] ? "detail" : "list"
+  );
 
+  const selected = selectedId ? DEMO_INBOX_THREADS.find(t => t.id === selectedId) ?? null : null;
   const contact = selected?.contact_id
     ? DEMO_CONTACTS.find(c => c.id === selected.contact_id)
     : null;
 
+  function handleSelectThread(id: string) {
+    setSelectedId(id);
+    setMobileView("detail");
+  }
+
   return (
     <div className="flex h-full" style={{ minHeight: "calc(100vh - 120px)" }}>
       {/* Left panel — thread list */}
-      <div className="w-80 shrink-0 border-r border-gray-200 bg-white flex flex-col">
+      {/* On mobile: visible when mobileView === "list" OR no thread selected */}
+      <div
+        className={`${
+          mobileView === "detail" && selected
+            ? "hidden lg:flex"
+            : "flex"
+        } w-full lg:w-80 shrink-0 border-r border-gray-200 bg-white flex-col`}
+      >
         <div className="px-4 py-4 border-b border-gray-100">
           <h1 className="text-lg font-bold text-gray-900">Inbox</h1>
           <p className="text-gray-400 text-xs mt-0.5">{DEMO_INBOX_THREADS.filter(t => !t.is_read).length} unread</p>
         </div>
 
-        {/* Info box */}
         <div className="mx-3 mt-3 bg-blue-50 border border-blue-100 rounded-xl p-3 text-blue-700 text-xs">
           View conversations from email, WhatsApp, Instagram, Facebook and website enquiries in one place.
         </div>
@@ -55,7 +69,7 @@ export default function InboxPage() {
               className={`w-full text-left px-4 py-3 transition-colors hover:bg-gray-50 ${
                 selectedId === thread.id ? "bg-indigo-50 border-l-2 border-l-indigo-500" : ""
               }`}
-              onClick={() => setSelectedId(thread.id)}
+              onClick={() => handleSelectThread(thread.id)}
             >
               <div className="flex items-start gap-2">
                 <span className="text-lg shrink-0 mt-0.5">{PLATFORM_ICONS[thread.platform] ?? "💬"}</span>
@@ -88,13 +102,30 @@ export default function InboxPage() {
       </div>
 
       {/* Right panel — conversation detail */}
-      <div className="flex-1 flex flex-col bg-gray-50 overflow-hidden">
+      <div
+        className={`${
+          mobileView === "detail" && selected
+            ? "flex"
+            : "hidden lg:flex"
+        } flex-1 flex-col bg-gray-50 overflow-hidden`}
+      >
         {selected ? (
           <>
+            {/* Mobile back button */}
+            <button
+              className="lg:hidden bg-white border-b border-gray-200 px-4 py-3 text-left flex items-center gap-2 text-indigo-600 text-sm font-medium hover:bg-gray-50 shrink-0"
+              onClick={() => setMobileView("list")}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="15 18 9 12 15 6"/>
+              </svg>
+              Back to inbox
+            </button>
+
             {/* Header */}
-            <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-start justify-between gap-4">
+            <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-start justify-between gap-4 shrink-0">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <h2 className="font-semibold text-gray-900">{selected.contact_name}</h2>
                   <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
                     {PLATFORM_LABELS[selected.platform] ?? selected.platform}
@@ -108,7 +139,7 @@ export default function InboxPage() {
             </div>
 
             {/* AI summary */}
-            <div className="mx-6 mt-4">
+            <div className="mx-4 sm:mx-6 mt-4 shrink-0">
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className="bg-amber-50 border border-amber-200 text-amber-700 text-xs px-2 py-0.5 rounded-full font-medium">AI Summary</span>
@@ -122,14 +153,14 @@ export default function InboxPage() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-3">
               {selected.messages.map(msg => (
                 <div
                   key={msg.id}
                   className={`flex ${msg.direction === "out" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-sm rounded-xl px-4 py-3 text-sm ${
+                    className={`max-w-[85%] sm:max-w-sm rounded-xl px-4 py-3 text-sm ${
                       msg.direction === "out"
                         ? "bg-indigo-100 text-indigo-900"
                         : "bg-gray-100 text-gray-800"
@@ -145,7 +176,7 @@ export default function InboxPage() {
 
             {/* Linked contact */}
             {contact && (
-              <div className="bg-white border-t border-gray-200 px-6 py-3 flex items-center gap-3">
+              <div className="bg-white border-t border-gray-200 px-4 sm:px-6 py-3 flex flex-wrap items-center gap-2 shrink-0">
                 <span className="text-xs text-gray-400">Linked CRM contact:</span>
                 <span className="text-sm font-medium text-gray-900">{contact.name}</span>
                 <span className="text-xs text-gray-400">{contact.company}</span>
@@ -155,7 +186,7 @@ export default function InboxPage() {
               </div>
             )}
             {!contact && selected.contact_id === null && (
-              <div className="bg-white border-t border-gray-200 px-6 py-3 text-xs text-gray-400">
+              <div className="bg-white border-t border-gray-200 px-4 sm:px-6 py-3 text-xs text-gray-400 shrink-0">
                 No CRM contact linked — add to CRM to track this lead.
               </div>
             )}
