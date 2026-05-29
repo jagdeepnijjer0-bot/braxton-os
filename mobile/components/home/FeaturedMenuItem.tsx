@@ -36,7 +36,7 @@ export function FeaturedMenuItemCard({ item, onPress }: FeaturedMenuItemProps) {
         <Text style={styles.category}>{item.category.toUpperCase()}</Text>
         <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
         <View style={styles.priceRow}>
-          <Text style={styles.price}>${item.price.toFixed(2)}</Text>
+          <Text style={styles.price}>£{item.price.toFixed(2)}</Text>
         </View>
       </View>
     </TouchableOpacity>

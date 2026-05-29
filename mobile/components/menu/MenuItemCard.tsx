@@ -32,7 +32,7 @@ export function MenuItemCard({ item, onPress }: MenuItemCardProps) {
         {item.description && (
           <Text style={styles.description} numberOfLines={2}>{item.description}</Text>
         )}
-        <Text style={styles.price}>${item.price.toFixed(2)}</Text>
+        <Text style={styles.price}>£{item.price.toFixed(2)}</Text>
       </View>
     </TouchableOpacity>
   );

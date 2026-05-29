@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { Layout } from '@/constants/layout';
@@ -9,7 +9,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useMenu } from '@/hooks/useMenu';
 
 export default function MenuScreen() {
-  const { filtered, categories, activeCategory, setActiveCategory, loading, error } = useMenu();
+  const { filtered, categories, activeCategory, setActiveCategory, loading, error, refetch } = useMenu();
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -30,6 +30,9 @@ export default function MenuScreen() {
         <View style={styles.centered}>
           <Text style={styles.errorText}>Failed to load menu</Text>
           <Text style={styles.errorSub}>{error}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={refetch}>
+            <Text style={styles.retryText}>Try again</Text>
+          </TouchableOpacity>
         </View>
       ) : filtered.length === 0 ? (
         <View style={styles.centered}>
@@ -67,6 +70,15 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Layout.spacing.sm },
   errorText: { fontSize: Layout.fontSize.base, color: Colors.error, fontWeight: '600' },
   errorSub: { fontSize: Layout.fontSize.sm, color: Colors.textMuted },
+  retryBtn: {
+    marginTop: Layout.spacing.sm,
+    paddingHorizontal: Layout.spacing.lg,
+    paddingVertical: Layout.spacing.sm,
+    borderRadius: Layout.borderRadius.full,
+    borderWidth: 1,
+    borderColor: Colors.gold,
+  },
+  retryText: { fontSize: Layout.fontSize.sm, color: Colors.gold, fontWeight: '600' },
   emptyIcon: { fontSize: 40 },
   emptyText: { fontSize: Layout.fontSize.base, color: Colors.textSecondary },
 });

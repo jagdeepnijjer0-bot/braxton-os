@@ -58,10 +58,7 @@
     "extra": {
       "eas": {
         "projectId": "YOUR_EAS_PROJECT_ID"
-      },
-      "supabaseUrl": "YOUR_SUPABASE_URL",
-      "supabaseAnonKey": "YOUR_SUPABASE_ANON_KEY",
-      "stripePublishableKey": "YOUR_STRIPE_PUBLISHABLE_KEY"
+      }
     }
   }
 }

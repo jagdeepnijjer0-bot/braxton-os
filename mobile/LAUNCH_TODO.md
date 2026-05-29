@@ -49,15 +49,31 @@
 
 ## Other Pre-Launch Items
 
-- [ ] Replace placeholder values in `app.json`:
-  - `extra.eas.projectId` → real EAS project ID (run `eas init`)
-  - `extra.supabaseUrl`, `extra.supabaseAnonKey`, `extra.stripePublishableKey`
-    are unused (app reads from `EXPO_PUBLIC_*` env vars via `.env`) — can be
-    removed to avoid confusion
-- [ ] Fill in `eas.json` submit fields:
-  - `appleId`, `ascAppId`, `appleTeamId`, `google-service-account.json`
-- [ ] Add real app icon and splash screen assets (replace placeholders in `assets/images/`)
+### BLOCKING — EAS build will fail without these
+
+- [ ] **Add app icon and splash images** — `assets/images/` is empty. The build requires:
+  - `assets/images/icon.png` — 1024×1024 px (iOS + Android)
+  - `assets/images/splash.png` — 1284×2778 px recommended (background `#0A0A0A`)
+  - `assets/images/adaptive-icon.png` — 1024×1024 px (Android foreground)
+  - `assets/images/favicon.png` — 32×32 or 64×64 px (web only)
+
+- [ ] **Set EAS project ID** — `app.json → extra.eas.projectId` is `"YOUR_EAS_PROJECT_ID"`.
+  Run `eas init` in the `mobile/` directory to create the project and auto-populate this value.
+
+### Before App Store / Play Store submission
+
+- [ ] Fill in `eas.json` submit credentials:
+  - iOS: `appleId`, `ascAppId`, `appleTeamId`
+  - Android: `serviceAccountKeyPath` (download from Google Play Console)
 - [ ] Set `merchantIdentifier` in `app.json` (currently `merchant.com.braxton.restaurant`)
   to the real Apple Pay merchant ID registered in the Apple Developer portal
-- [ ] Verify all `EXPO_PUBLIC_*` env vars are set in EAS build secrets for `production` profile
+- [ ] Verify all `EXPO_PUBLIC_*` env vars are set in EAS Secrets for the `production` profile:
+  - `EXPO_PUBLIC_SUPABASE_URL`
+  - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+  - `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+  - `EXPO_PUBLIC_STRIPE_PREMIUM_PRICE_ID`
+  - `EXPO_PUBLIC_MEMBERSHIP_PRICE_DISPLAY`
+  - `EXPO_PUBLIC_RESTAURANT_EMAIL`, `_PHONE`, `_WHATSAPP`, `_ADDRESS`
+  - `EXPO_PUBLIC_RESTAURANT_INSTAGRAM`, `_TIKTOK`, `_FACEBOOK`
+- [ ] Update real restaurant contact info in `.env` (phone, WhatsApp, address, social URLs)
 - [ ] Enable Apple Pay / Google Pay in Stripe Dashboard for the production account
