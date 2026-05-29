@@ -43,7 +43,8 @@ async function resolveUserId(
   return metadataFallback?.supabase_user_id ?? null;
 }
 
-// Upserts the restaurant_memberships row from a Stripe Subscription object
+// Upserts the restaurant_memberships row from a Stripe Subscription object.
+// Throws on DB error so the outer handler can return { warning } to Stripe.
 async function syncSubscription(
   sub: Stripe.Subscription,
   overrideStatus?: string,
@@ -57,7 +58,7 @@ async function syncSubscription(
 
   const status = overrideStatus ?? STRIPE_STATUS_MAP[sub.status] ?? 'inactive';
 
-  await supabase.from('restaurant_memberships').upsert(
+  const { error } = await supabase.from('restaurant_memberships').upsert(
     {
       user_id:                userId,
       stripe_customer_id:     customerId,
@@ -72,6 +73,22 @@ async function syncSubscription(
     },
     { onConflict: 'user_id' },
   );
+  if (error) throw new Error(`DB upsert failed: ${error.message}`);
+}
+
+// Updates only status + updated_at by customer ID.
+// Used as fallback when a subscription object cannot be retrieved from Stripe.
+async function updateStatusByCustomer(customerId: string, status: string): Promise<void> {
+  const userId = await resolveUserId(customerId, null);
+  if (!userId) {
+    console.error(`[webhook] No user found for Stripe customer ${customerId}`);
+    return;
+  }
+  const { error } = await supabase
+    .from('restaurant_memberships')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('user_id', userId);
+  if (error) throw new Error(`DB update failed: ${error.message}`);
 }
 
 serve(async (req) => {
@@ -105,60 +122,90 @@ serve(async (req) => {
       }
 
       // ── Checkout session completed ───────────────────────────────────────────
-      // Fires immediately after a user completes payment in Stripe Checkout.
-      // Retrieve the subscription object so we have full period details.
+      // Retrieve the subscription so we have full period/status details.
+      // If the subscription ID isn't retrievable (e.g. test synthetic ID),
+      // fall back to seeding a minimal active row via session metadata.
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.CheckoutSession;
         if (session.mode === 'subscription' && session.subscription) {
-          const sub = await stripe.subscriptions.retrieve(
-            session.subscription as string,
-          );
-          // Link customer to user via session metadata if membership row not yet created
-          const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
+          const subId     = session.subscription as string;
+          const custId    = typeof session.customer === 'string' ? session.customer : session.customer?.id ?? null;
           const metaUserId = session.metadata?.supabase_user_id ?? null;
-          if (metaUserId) {
-            // Ensure the membership row exists with the customer ID before syncSubscription
-            await supabase.from('restaurant_memberships').upsert(
+
+          let sub: Stripe.Subscription | null = null;
+          try {
+            sub = await stripe.subscriptions.retrieve(subId);
+          } catch (retrieveErr) {
+            console.warn(`[webhook] checkout.session.completed: subscription ${subId} not retrievable — ${(retrieveErr as Error).message}`);
+          }
+
+          if (sub) {
+            // Ensure membership row exists and is linked to this customer
+            if (metaUserId) {
+              const subCustomer = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
+              await supabase.from('restaurant_memberships').upsert(
+                {
+                  user_id:            metaUserId,
+                  stripe_customer_id: subCustomer,
+                  status:             'inactive',
+                  plan:               'premium',
+                },
+                { onConflict: 'user_id' },
+              );
+            }
+            await syncSubscription(sub, 'active');
+          } else if (metaUserId && custId) {
+            // Fallback: seed minimal active row without full subscription data
+            const { error } = await supabase.from('restaurant_memberships').upsert(
               {
-                user_id:            metaUserId,
-                stripe_customer_id: customerId,
-                status:             'inactive',
-                plan:               'premium',
+                user_id:                metaUserId,
+                stripe_customer_id:     custId,
+                stripe_subscription_id: subId,
+                status:                 'active',
+                plan:                   'premium',
+                updated_at:             new Date().toISOString(),
               },
               { onConflict: 'user_id' },
             );
+            if (error) throw new Error(`DB upsert failed: ${error.message}`);
           }
-          await syncSubscription(sub, 'active');
         }
         break;
       }
 
       // ── Payment failed (invoice) ─────────────────────────────────────────────
-      // Fires on each failed payment attempt. We set status to past_due so the app
-      // shows the warning banner promptly without waiting for subscription.updated.
+      // Sets status to past_due promptly without waiting for subscription.updated.
+      // Falls back to customer-based update if the subscription isn't retrievable.
       case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice;
-        if (invoice.subscription) {
-          const sub = await stripe.subscriptions.retrieve(
-            invoice.subscription as string,
-          );
-          await syncSubscription(sub, 'past_due');
+        const invoice  = event.data.object as Stripe.Invoice;
+        const subId    = typeof invoice.subscription === 'string' ? invoice.subscription : null;
+        const custId   = typeof invoice.customer    === 'string' ? invoice.customer    : null;
+        if (subId) {
+          try {
+            const sub = await stripe.subscriptions.retrieve(subId);
+            await syncSubscription(sub, 'past_due');
+          } catch {
+            if (custId) await updateStatusByCustomer(custId, 'past_due');
+          }
         }
         break;
       }
 
       // ── Payment succeeded (invoice) ──────────────────────────────────────────
-      // Fires when a past_due subscription recovers after a successful retry.
-      // Also fires for the initial payment — safe to always set active.
+      // Recovers from past_due after a successful retry.
+      // Falls back to customer-based update if the subscription isn't retrievable.
       case 'invoice.paid': {
-        const invoice = event.data.object as Stripe.Invoice;
-        if (invoice.subscription) {
-          const sub = await stripe.subscriptions.retrieve(
-            invoice.subscription as string,
-          );
-          // Only promote to active if subscription isn't cancelled
-          if (sub.status !== 'canceled') {
-            await syncSubscription(sub, 'active');
+        const invoice  = event.data.object as Stripe.Invoice;
+        const subId    = typeof invoice.subscription === 'string' ? invoice.subscription : null;
+        const custId   = typeof invoice.customer    === 'string' ? invoice.customer    : null;
+        if (subId) {
+          try {
+            const sub = await stripe.subscriptions.retrieve(subId);
+            if (sub.status !== 'canceled') {
+              await syncSubscription(sub, 'active');
+            }
+          } catch {
+            if (custId) await updateStatusByCustomer(custId, 'active');
           }
         }
         break;

@@ -88,7 +88,11 @@ async function sendWebhookEvent(eventType, dataObject) {
 
   const text = await res.text();
   if (!res.ok) throw new Error(`Webhook responded ${res.status}: ${text}`);
-  return JSON.parse(text);
+  const json = JSON.parse(text);
+  // The webhook returns { received: true, warning } when an internal error occurs
+  // (e.g. DB upsert failure) — surface it as a thrown error so the test fails clearly.
+  if (json.warning) throw new Error(`Webhook internal error: ${json.warning}`);
+  return json;
 }
 
 /** Read the membership row for a user via the admin client */
@@ -119,6 +123,32 @@ async function invokeFunction(name, userClient, body = {}) {
   const json = await res.json();
   if (!res.ok || json.error) throw new Error(json.error ?? `HTTP ${res.status}`);
   return json;
+}
+
+// ── PRE-FLIGHT: Verify migration 026 is applied ───────────────────────────────
+section('Pre-flight — verifying database schema');
+
+{
+  const { error: schemaErr } = await admin
+    .from('restaurant_memberships')
+    .select('cancel_at_period_end, cancel_at')
+    .limit(1);
+
+  if (schemaErr) {
+    const msg = schemaErr.message ?? '';
+    if (msg.includes('cancel_at_period_end') || msg.includes('cancel_at')) {
+      console.error('\n  ❌  Migration 026 has NOT been applied.');
+      console.error('       The cancel_at_period_end / cancel_at columns are missing.\n');
+      console.error('       Run this SQL in the Supabase SQL Editor, then re-run this test:\n');
+      console.error('         ALTER TABLE public.restaurant_memberships');
+      console.error('           ADD COLUMN IF NOT EXISTS cancel_at_period_end  boolean  NOT NULL DEFAULT false,');
+      console.error('           ADD COLUMN IF NOT EXISTS cancel_at             timestamptz;\n');
+      process.exit(1);
+    }
+    warn(`Schema pre-flight returned unexpected error (non-fatal): ${msg}`);
+  } else {
+    pass('Schema OK — cancel_at_period_end and cancel_at columns present');
+  }
 }
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
