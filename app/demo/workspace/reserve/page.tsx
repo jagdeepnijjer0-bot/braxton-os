@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { DEMO_PACKAGES } from "@/lib/demo/seed";
 
 const TIMEFRAMES = [
@@ -19,6 +19,21 @@ export default function DemoReservePage() {
   const [loading, setLoading]     = useState(false);
   const [done, setDone]           = useState(false);
   const [error, setError]         = useState<string | null>(null);
+
+  const formRef       = useRef<HTMLDivElement>(null);
+  const firstFieldRef = useRef<HTMLSelectElement>(null);
+
+  // After a package is selected, wait for the form to render then scroll + focus
+  useEffect(() => {
+    if (!selected) return;
+    const scrollTimer = setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 40);
+    const focusTimer = setTimeout(() => {
+      firstFieldRef.current?.focus();
+    }, 450); // after scroll animation settles
+    return () => { clearTimeout(scrollTimer); clearTimeout(focusTimer); };
+  }, [selected]);
 
   async function handleReserve() {
     if (!selected) return;
@@ -146,9 +161,9 @@ export default function DemoReservePage() {
         ))}
       </div>
 
-      {/* Reservation form — appears after selecting */}
+      {/* Reservation form — appears after selecting, scrolled into view automatically */}
       {selected && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-8 max-w-xl shadow-sm space-y-6">
+        <div ref={formRef} className="bg-white border border-gray-200 rounded-2xl p-8 max-w-xl shadow-sm space-y-6">
           <div>
             <h2 className="text-lg font-bold text-gray-900 mb-1">Reserve your slot</h2>
             <p className="text-gray-400 text-sm">
@@ -162,6 +177,7 @@ export default function DemoReservePage() {
                 When are you looking to get started?
               </label>
               <select
+                ref={firstFieldRef}
                 value={timeframe}
                 onChange={e => setTimeframe(e.target.value)}
                 className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
