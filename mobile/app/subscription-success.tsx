@@ -46,7 +46,7 @@ export default function SubscriptionSuccessScreen() {
 
     const timer = setInterval(tick, POLL_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [isPremium]);
+  }, [isPremium, refetch]);
 
   // ── Timed out (webhook very delayed) ──────────────────────────────────────
   if (timedOut && !confirmed) {

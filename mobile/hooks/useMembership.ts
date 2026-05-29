@@ -40,13 +40,13 @@ export function useMembership(userId: string | undefined) {
 
   const fetchCoffeeClaim = useCallback(async () => {
     if (!userId) return;
-    const { data } = await supabase
+    const { data, error: fetchError } = await supabase
       .from('coffee_claims')
       .select('*')
       .eq('user_id', userId)
       .eq('month_year', currentMonthYear)
       .maybeSingle();
-    setCoffeeClaim(data);
+    if (!fetchError) setCoffeeClaim(data);
   }, [userId, currentMonthYear]);
 
   useEffect(() => {
@@ -91,6 +91,16 @@ export function useMembership(userId: string | undefined) {
 
   const hasClaimedThisMonth = !!coffeeClaim;
 
+  const refetch = useCallback(() => {
+    fetchMembership();
+    fetchCoffeeClaim();
+  }, [fetchMembership, fetchCoffeeClaim]);
+
+  const refresh = useCallback(() => {
+    fetchMembership(true);
+    fetchCoffeeClaim();
+  }, [fetchMembership, fetchCoffeeClaim]);
+
   return {
     membership,
     coffeeClaim,
@@ -104,7 +114,7 @@ export function useMembership(userId: string | undefined) {
     hasAccess,
     hasClaimedThisMonth,
     claimCoffee,
-    refetch: () => { fetchMembership(); fetchCoffeeClaim(); },
-    refresh: () => { fetchMembership(true); fetchCoffeeClaim(); },
+    refetch,
+    refresh,
   };
 }

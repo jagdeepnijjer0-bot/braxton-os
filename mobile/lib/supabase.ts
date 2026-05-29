@@ -13,6 +13,13 @@ const supabaseAnonKey =
   (Constants.expoConfig?.extra?.supabaseAnonKey as string) ??
   '';
 
+if (__DEV__ && (!supabaseUrl || !supabaseAnonKey)) {
+  console.warn(
+    '[Braxton] EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY is not set. ' +
+    'All Supabase calls will fail. Add them to mobile/.env',
+  );
+}
+
 const ExpoSecureStoreAdapter = {
   getItem: (key: string) => SecureStore.getItemAsync(key),
   setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),

@@ -20,14 +20,3 @@ export async function createPortalSession(): Promise<{ url: string } | null> {
   return data;
 }
 
-export async function getPaymentSheetParams(priceId: string): Promise<{
-  paymentIntent: string;
-  ephemeralKey: string;
-  customer: string;
-} | null> {
-  const { data, error } = await supabase.functions.invoke('create-payment-sheet', {
-    body: { priceId },
-  });
-  if (error) throw error;
-  return data;
-}
