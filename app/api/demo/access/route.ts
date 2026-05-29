@@ -18,12 +18,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const name = typeof body.name === "string" ? body.name.trim() : "";
-  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-  const business_name = typeof body.business_name === "string" ? body.business_name.trim() : "";
-  const industry = typeof body.industry === "string" ? body.industry.trim() : null;
-  const problem = typeof body.problem === "string" ? body.problem.trim() : null;
-  const bottleneck = typeof body.bottleneck === "string" ? body.bottleneck.trim() : null;
+  const name          = typeof body.name          === "string"  ? body.name.trim()          : "";
+  const email         = typeof body.email         === "string"  ? body.email.trim().toLowerCase() : "";
+  const business_name = typeof body.business_name === "string"  ? body.business_name.trim()  : "";
+  const industry      = typeof body.industry      === "string"  ? body.industry.trim()       : null;
+  const problem       = typeof body.problem       === "string"  ? body.problem.trim()        : null;
+  const bottleneck    = typeof body.bottleneck    === "string"  ? body.bottleneck.trim()     : null;
+  // remember=true (default) → 72h persistent cookie; false → session cookie (expires on browser close)
+  const remember      = body.remember !== false;
 
   if (!name || !email) {
     return NextResponse.json({ error: "name and email are required" }, { status: 400 });
@@ -156,7 +158,8 @@ export async function POST(req: NextRequest) {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
-    maxAge: 72 * 60 * 60,
+    // remember=true → persistent 72h cookie; false → session cookie (no maxAge)
+    ...(remember ? { maxAge: 72 * 60 * 60 } : {}),
     secure: process.env.NODE_ENV === "production",
   });
 
