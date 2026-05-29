@@ -22,6 +22,9 @@
  * The test creates real Stripe test objects and cleans them up on exit.
  */
 
+import WebSocket from 'ws';
+global.WebSocket = WebSocket;
+
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
