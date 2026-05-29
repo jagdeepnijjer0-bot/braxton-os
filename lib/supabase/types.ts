@@ -22,7 +22,8 @@ export type ContactStatus =
   | "negotiating"
   | "closed_won"
   | "closed_lost"
-  | "follow_up";
+  | "follow_up"
+  | "demo_user";
 
 export type ContactActivityType =
   | "note"
@@ -1158,6 +1159,59 @@ export interface Database {
           updated_at?:   string;
           updated_by?:   string | null;
         };
+      } & NoRelationships;
+
+      // ── demo_sessions ────────────────────────────────────────
+      demo_sessions: {
+        Row: {
+          id:               string;
+          token:            string;
+          contact_id:       string | null;
+          email:            string;
+          name:             string;
+          business_name:    string | null;
+          industry:         string | null;
+          problem:          string | null;
+          engagement_score: number;
+          last_active_at:   string;
+          expires_at:       string;
+          package_reserved: string | null;
+          created_at:       string;
+        };
+        Insert: {
+          token:            string;
+          email:            string;
+          name:             string;
+          business_name?:   string | null;
+          industry?:        string | null;
+          problem?:         string | null;
+          contact_id?:      string | null;
+          engagement_score?: number;
+          expires_at?:      string;
+          package_reserved?: string | null;
+        };
+        Update: {
+          engagement_score?: number;
+          last_active_at?:   string;
+          package_reserved?: string | null;
+        };
+      } & NoRelationships;
+
+      // ── demo_events ──────────────────────────────────────────
+      demo_events: {
+        Row: {
+          id:         string;
+          session_id: string;
+          event_type: string;
+          metadata:   Record<string, unknown> | null;
+          created_at: string;
+        };
+        Insert: {
+          session_id: string;
+          event_type: string;
+          metadata?:  Record<string, unknown> | null;
+        };
+        Update: Record<string, never>;
       } & NoRelationships;
     };
     Views: Record<string, never>;

@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { dispatchWebhook } from "@/lib/webhooks/dispatcher";
-import type { WebhookEvent } from "@/lib/webhooks/dispatcher";
+import { retryDelivery } from "@/lib/webhooks/dispatcher";
 
 // POST /api/webhooks/outbound/retry
-// Retries a specific failed delivery log by ID. Admin/manager only.
+// Retries a specific delivery log by ID, updating the original row.
+// Admin/manager only.
 export async function POST(req: NextRequest) {
   const supabase = await createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -23,25 +22,10 @@ export async function POST(req: NextRequest) {
 
   if (!body.id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
-  const admin = createAdminClient();
-  const { data: log } = await admin
-    .from("webhook_delivery_logs")
-    .select("id, event, request_body, attempts")
-    .eq("id", body.id)
-    .single();
+  const result = await retryDelivery(body.id);
 
-  if (!log) return NextResponse.json({ error: "Log not found" }, { status: 404 });
-  if (log.attempts >= 5) return NextResponse.json({ error: "Max retry attempts reached" }, { status: 400 });
-
-  const data = (log.request_body as { data?: Record<string, unknown> })?.data ?? {};
-
-  try {
-    await dispatchWebhook(log.event as WebhookEvent, data);
-    return NextResponse.json({ ok: true });
-  } catch (err) {
-    return NextResponse.json(
-      { ok: false, error: err instanceof Error ? err.message : String(err) },
-      { status: 500 },
-    );
-  }
+  return NextResponse.json(
+    { ok: result.ok, http_status: result.httpStatus, error: result.error },
+    { status: result.ok ? 200 : 502 },
+  );
 }

@@ -12,7 +12,7 @@ export type ShellProfile = {
   role: string;
 } | null;
 
-const AUTH_PATHS = ["/login", "/signup", "/forms/"];
+const AUTH_PATHS = ["/login", "/signup", "/forms/", "/demo"];
 
 interface Props {
   children: React.ReactNode;
@@ -44,9 +44,10 @@ export default function AppShell({ children, profile }: Props) {
   const openSidebar  = useCallback(() => setSidebarOpen(true),  []);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
-  // Auth pages render without chrome
+  // Auth/demo pages render without chrome.
+  // Wrap in a block-level div that fills the flex body so demo pages are truly full-width.
   if (AUTH_PATHS.some(p => pathname.startsWith(p))) {
-    return <>{children}</>;
+    return <div className="w-full min-h-full">{children}</div>;
   }
 
   return (

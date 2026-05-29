@@ -7,6 +7,7 @@ import PlatformBadge from "@/app/components/inbox/PlatformBadge";
 import InboxStatusBadge from "@/app/components/inbox/InboxStatusBadge";
 import ConversationDetailActions from "@/app/components/inbox/ConversationDetailActions";
 import QualificationPanel from "@/app/components/qualification/QualificationPanel";
+import FileAttachments from "@/app/components/files/FileAttachments";
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -125,6 +126,9 @@ export default async function ConversationDetailPage({ params }: Props) {
               contactId={conv.contact_id ?? null}
               contactName={conv.contact_name}
             />
+
+            {/* Attachments */}
+            <FileAttachments entityType="conversation" entityId={id} />
 
             {/* Metadata */}
             <div className="bg-white border border-gray-100 rounded-xl p-3 space-y-2">

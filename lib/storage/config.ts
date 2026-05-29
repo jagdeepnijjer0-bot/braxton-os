@@ -1,4 +1,4 @@
-export const BUCKET_NAME    = "attachments";
+export const DEFAULT_BUCKET = "attachments"; // legacy fallback
 export const MAX_FILE_SIZE  = 52_428_800; // 50 MB
 
 export const ALLOWED_MIME_TYPES: Record<string, string> = {
@@ -25,7 +25,7 @@ export const ALLOWED_MIME_TYPES: Record<string, string> = {
   "audio/wav":  ".wav",
   "audio/ogg":  ".ogg",
   // Video
-  "video/mp4":      ".mp4",
+  "video/mp4":       ".mp4",
   "video/quicktime": ".mov",
 };
 
@@ -36,6 +36,20 @@ export type FileEntityType =
   | "conversation"
   | "task"
   | "inbox_message";
+
+// Per-entity isolated buckets — each entity type gets its own bucket
+export const ENTITY_BUCKETS: Record<FileEntityType, string> = {
+  contact:       "crm-files",
+  deal:          "deal-files",
+  project:       "project-files",
+  conversation:  "message-files",
+  inbox_message: "message-files",
+  task:          "attachments", // tasks share legacy bucket
+};
+
+export function getBucketForEntity(entityType: FileEntityType): string {
+  return ENTITY_BUCKETS[entityType] ?? DEFAULT_BUCKET;
+}
 
 export function storagePath(
   entityType: FileEntityType,
