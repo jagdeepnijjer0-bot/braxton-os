@@ -88,6 +88,7 @@ export default function DemoAccessPage() {
               <input
                 name="name"
                 required
+                autoComplete="name"
                 placeholder="Jane Smith"
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-base placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
@@ -99,6 +100,7 @@ export default function DemoAccessPage() {
                 name="email"
                 type="email"
                 required
+                autoComplete="email"
                 placeholder="jane@company.com"
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-base placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
@@ -108,6 +110,7 @@ export default function DemoAccessPage() {
               <label className="block text-sm font-medium text-gray-300 mb-1">Business name</label>
               <input
                 name="business_name"
+                autoComplete="organization"
                 placeholder="Smith Properties Ltd"
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white text-base placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />

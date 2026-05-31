@@ -1,8 +1,26 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { DEMO_KPI } from "@/lib/demo/seed";
 import { getDemoSessionFromCookie } from "@/lib/demo/session";
 
-export const metadata = { title: "Braxton OS — Live Demo" };
+const OG_TITLE       = "Braxton OS — Run Your Entire Business From One Dashboard";
+const OG_DESCRIPTION = "CRM, inbox, projects, finance and AI automation — all in one OS. 72-hour live demo. No credit card. No sales call.";
+
+export const metadata: Metadata = {
+  title: "Braxton OS — Live Demo",
+  description: OG_DESCRIPTION,
+  openGraph: {
+    title:       OG_TITLE,
+    description: OG_DESCRIPTION,
+    type:        "website",
+    siteName:    "Braxton OS",
+  },
+  twitter: {
+    card:        "summary_large_image",
+    title:       OG_TITLE,
+    description: OG_DESCRIPTION,
+  },
+};
 
 const FEATURES = [
   {
