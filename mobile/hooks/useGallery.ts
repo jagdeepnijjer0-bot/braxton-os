@@ -50,7 +50,7 @@ export function useGallery() {
     loading,
     refreshing,
     error,
-    refetch: fetchGallery,
+    refetch: () => fetchGallery(),
     refresh: () => fetchGallery(true),
   };
 }

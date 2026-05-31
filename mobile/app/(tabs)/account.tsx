@@ -179,6 +179,10 @@ export default function AccountScreen() {
           <Text style={styles.sectionLabelText}>ACCOUNT</Text>
         </View>
         <Card padded={false}>
+          <MenuRow icon="✎"  label="Edit Profile"       onPress={() => router.push('/edit-profile')} />
+          <Divider />
+          <MenuRow icon="🗓" label="My Reservations"    onPress={() => router.push('/my-reservations')} />
+          <Divider />
           <MenuRow icon="📅" label="Make a Reservation" onPress={() => router.push('/reservations')} />
           <Divider />
           <MenuRow icon="💬" label="Contact Us"         onPress={() => router.push('/contact')} />

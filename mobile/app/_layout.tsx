@@ -36,6 +36,12 @@ async function handleDeepLink(url: string | null) {
     router.replace('/subscription-success');
     return;
   }
+
+  // ── Subscription cancelled (user closed Stripe Checkout on cold start) ──────
+  if (url.includes('subscription-cancel')) {
+    router.replace('/subscription-cancel');
+    return;
+  }
 }
 
 export default function RootLayout() {
@@ -61,6 +67,9 @@ export default function RootLayout() {
         <Stack.Screen name="manage-subscription"   options={{ presentation: 'modal' }} />
         <Stack.Screen name="reset-password"        options={{ presentation: 'modal' }} />
         <Stack.Screen name="subscription-success"  options={{ presentation: 'modal' }} />
+        <Stack.Screen name="subscription-cancel"   options={{ presentation: 'modal' }} />
+        <Stack.Screen name="edit-profile"          options={{ presentation: 'card'  }} />
+        <Stack.Screen name="my-reservations"       options={{ presentation: 'card'  }} />
       </Stack>
     </StripeProvider>
   );
