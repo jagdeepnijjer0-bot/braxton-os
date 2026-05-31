@@ -51,14 +51,14 @@
 
 ### BLOCKING — EAS build will fail without these
 
-- [ ] **Add app icon and splash images** — `assets/images/` is empty. The build requires:
-  - `assets/images/icon.png` — 1024×1024 px (iOS + Android)
-  - `assets/images/splash.png` — 1284×2778 px recommended (background `#0A0A0A`)
-  - `assets/images/adaptive-icon.png` — 1024×1024 px (Android foreground)
-  - `assets/images/favicon.png` — 32×32 or 64×64 px (web only)
+- [x] **Add app icon and splash images** — generated in `assets/images/`:
+  - `assets/images/icon.png` — 1024×1024 px
+  - `assets/images/splash.png` — 1284×2778 px (background `#0A0A0A`)
+  - `assets/images/adaptive-icon.png` — 1024×1024 px
+  - `assets/images/favicon.png` — 64×64 px
 
-- [ ] **Set EAS project ID** — `app.json → extra.eas.projectId` is `"YOUR_EAS_PROJECT_ID"`.
-  Run `eas init` in the `mobile/` directory to create the project and auto-populate this value.
+- [ ] **Set EAS project ID** — run `eas init` in the `mobile/` directory.
+  `app.json → extra.eas.projectId` is currently empty and will be auto-populated.
 
 ### Before App Store / Play Store submission
 
