@@ -53,8 +53,8 @@ export default function RootLayout() {
     return () => sub.remove();
   }, []);
 
-  return (
-    <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY} merchantIdentifier="merchant.com.cafelocco.app">
+  const nav = (
+    <>
       <StatusBar style="light" backgroundColor={Colors.background} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.background } }}>
         <Stack.Screen name="(auth)" />
@@ -71,6 +71,15 @@ export default function RootLayout() {
         <Stack.Screen name="edit-profile"          options={{ presentation: 'card'  }} />
         <Stack.Screen name="my-reservations"       options={{ presentation: 'card'  }} />
       </Stack>
+    </>
+  );
+
+  // StripeProvider native module crashes if publishableKey is empty string
+  if (!STRIPE_PUBLISHABLE_KEY) return nav;
+
+  return (
+    <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY} merchantIdentifier="merchant.com.cafelocco.app">
+      {nav}
     </StripeProvider>
   );
 }

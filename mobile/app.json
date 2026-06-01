@@ -16,9 +16,11 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.cafelocco.app",
       "buildNumber": "1",
+      "minimumOsVersion": "15.1",
       "infoPlist": {
-        "NSCameraUsageDescription": "Used to upload your profile photo.",
-        "NSPhotoLibraryUsageDescription": "Used to select a profile photo."
+        "NSCameraUsageDescription": "Used to take a profile photo.",
+        "NSPhotoLibraryUsageDescription": "Used to select a profile photo.",
+        "NSPhotoLibraryAddOnlyUsageDescription": "Used to save photos to your library."
       }
     },
     "android": {
