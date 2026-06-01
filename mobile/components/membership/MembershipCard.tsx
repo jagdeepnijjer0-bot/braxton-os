@@ -23,7 +23,7 @@ export function MembershipCard({ membership, memberName }: MembershipCardProps) 
     >
       <View style={styles.header}>
         <View>
-          <Text style={styles.cardLabel}>BRAXTON</Text>
+          <Text style={styles.cardLabel}>CAFE LOCCO</Text>
           <Text style={styles.planLabel}>{isPremium ? 'PREMIUM MEMBER' : 'STANDARD'}</Text>
         </View>
         <Text style={styles.crown}>{isPremium ? '♛' : '☆'}</Text>

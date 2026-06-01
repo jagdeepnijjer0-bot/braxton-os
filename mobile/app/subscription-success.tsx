@@ -95,7 +95,7 @@ export default function SubscriptionSuccessScreen() {
       <SafeAreaView style={styles.gradientSafe}>
         <View style={styles.successContainer}>
           <Text style={styles.crown}>♛</Text>
-          <Text style={styles.tagline}>BRAXTON PREMIUM</Text>
+          <Text style={styles.tagline}>CAFE LOCCO PREMIUM</Text>
           <Text style={styles.successTitle}>Welcome to Premium!</Text>
           <Text style={styles.successBody}>
             Your membership is now active. Enjoy your exclusive benefits.

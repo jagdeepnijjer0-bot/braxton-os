@@ -25,7 +25,7 @@ import { format, isPast, parseISO } from 'date-fns';
 import { useState } from 'react';
 import { RestaurantMembership } from '@/lib/types';
 
-const SUPPORT_EMAIL = process.env.EXPO_PUBLIC_RESTAURANT_EMAIL ?? 'hello@braxtonrestaurant.com';
+const SUPPORT_EMAIL = process.env.EXPO_PUBLIC_RESTAURANT_EMAIL ?? '';
 const PLAN_PRICE    = process.env.EXPO_PUBLIC_MEMBERSHIP_PRICE_DISPLAY ?? '£24.00 / month';
 
 type BadgeVariant = 'gold' | 'success' | 'error' | 'warning' | 'neutral';
@@ -157,7 +157,7 @@ export default function ManageSubscriptionScreen() {
           <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8 }}>
             <Text style={styles.backText}>← Back</Text>
           </TouchableOpacity>
-          <Text style={styles.tagline}>BRAXTON</Text>
+          <Text style={styles.tagline}>CAFE LOCCO</Text>
           <Text style={styles.title}>My Subscription</Text>
         </View>
 
@@ -210,7 +210,7 @@ export default function ManageSubscriptionScreen() {
               label="Status"
               right={<Badge label={statusInfo.label} variant={statusInfo.variant} />}
             />
-            <DetailRow label="Plan" value="Braxton Premium" />
+            <DetailRow label="Plan" value="Cafe Locco Premium" />
             {membership.current_period_start && (
               <DetailRow
                 label="Started"
@@ -281,7 +281,7 @@ export default function ManageSubscriptionScreen() {
         <View style={styles.stripeRow}>
           <Text style={styles.stripeLock}>🔒</Text>
           <Text style={styles.stripeText}>
-            Payments secured by Stripe. Braxton never stores your card details.
+            Payments secured by Stripe. Cafe Locco never stores your card details.
           </Text>
         </View>
       </ScrollView>

@@ -133,7 +133,7 @@ export default function ContactScreen() {
 
           <View style={styles.summaryCard}>
             <View style={styles.summaryHeader}>
-              <Text style={styles.summaryBrand}>BRAXTON</Text>
+              <Text style={styles.summaryBrand}>CAFE LOCCO</Text>
               <Text style={styles.summaryLabel}>Message Summary</Text>
             </View>
             <View style={styles.summaryDivider} />
@@ -185,7 +185,7 @@ export default function ContactScreen() {
           </TouchableOpacity>
 
           <View style={styles.pageHeader}>
-            <Text style={styles.tagline}>BRAXTON</Text>
+            <Text style={styles.tagline}>CAFE LOCCO</Text>
             <Text style={styles.title}>Get in Touch</Text>
             <Text style={styles.subtitle}>We'd love to hear from you</Text>
           </View>

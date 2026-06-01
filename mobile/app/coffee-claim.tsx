@@ -84,7 +84,7 @@ export default function CoffeeClaimScreen() {
         <GateScreen
           icon="♛"
           title="Premium Members Only"
-          sub="Upgrade to Braxton Premium to get one complimentary coffee every month."
+          sub="Upgrade to Cafe Locco Premium to get one complimentary coffee every month."
           primaryLabel="Upgrade to Premium"
           onPrimary={() => router.replace('/membership')}
           secondaryLabel="Maybe Later"
@@ -160,7 +160,7 @@ export default function CoffeeClaimScreen() {
             >
               {/* Header */}
               <View style={styles.voucherHeader}>
-                <Text style={styles.voucherBrand}>BRAXTON</Text>
+                <Text style={styles.voucherBrand}>CAFE LOCCO</Text>
                 <Badge label="Premium" variant="gold" />
               </View>
 
@@ -190,7 +190,7 @@ export default function CoffeeClaimScreen() {
                 <Text style={styles.verifyHeading}>STAFF VERIFICATION</Text>
                 <Text style={styles.verifyCode}>{ref}</Text>
                 <Text style={styles.verifyNote}>
-                  Claim ref · verified against Braxton member records
+                  Claim ref · verified against Cafe Locco member records
                 </Text>
               </View>
             </LinearGradient>
@@ -245,7 +245,7 @@ export default function CoffeeClaimScreen() {
         <View style={styles.voucher}>
           <View style={styles.voucherPreview}>
             <View style={styles.voucherHeader}>
-              <Text style={styles.voucherBrand}>BRAXTON</Text>
+              <Text style={styles.voucherBrand}>CAFE LOCCO</Text>
               <Badge label="Premium" variant="gold" />
             </View>
             <Text style={styles.voucherTitle}>Complimentary Coffee</Text>

@@ -75,8 +75,8 @@ serve(async (req) => {
       line_items:            [{ price: priceId, quantity: 1 }],
       mode:                  'subscription',
       allow_promotion_codes: true,
-      success_url:           'braxton://subscription-success?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url:            'braxton://subscription-cancel',
+      success_url:           'cafelocco://subscription-success?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url:            'cafelocco://subscription-cancel',
       subscription_data: {
         metadata: { supabase_user_id: user.id },
       },

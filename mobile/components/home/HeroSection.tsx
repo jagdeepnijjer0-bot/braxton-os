@@ -33,7 +33,7 @@ export function HeroSection({ onReserve, onMenu }: HeroSectionProps) {
         >
           <View style={styles.content}>
             <Text style={styles.tagline}>FINE DINING EXPERIENCE</Text>
-            <Text style={styles.title}>Braxton</Text>
+            <Text style={styles.title}>Cafe Locco</Text>
             <Text style={styles.subtitle}>
               Where every dish tells a story and{'\n'}every moment becomes a memory.
             </Text>

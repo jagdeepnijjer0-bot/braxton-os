@@ -44,7 +44,7 @@ export default function AccountScreen() {
       <SafeAreaView style={styles.safe} edges={['top']}>
         <LinearGradient colors={['#0A0A0A', '#0A0A0A']} style={styles.notAuthContainer}>
           <Text style={styles.braxtonLogo}>♛</Text>
-          <Text style={styles.braxtonTagline}>BRAXTON</Text>
+          <Text style={styles.braxtonTagline}>CAFE LOCCO</Text>
           <Text style={styles.notAuthTitle}>Your Account</Text>
           <Text style={styles.notAuthSub}>
             Sign in to view your profile, membership, reservations, and exclusive member benefits.
@@ -199,7 +199,7 @@ export default function AccountScreen() {
           textStyle={{ color: Colors.error }}
         />
 
-        <Text style={styles.version}>Braxton · v1.0.0</Text>
+        <Text style={styles.version}>Cafe Locco · v1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
   );

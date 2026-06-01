@@ -42,7 +42,7 @@ serve(async (req) => {
 
     const session = await stripe.billingPortal.sessions.create({
       customer:   membership.stripe_customer_id,
-      return_url: 'braxton://manage-subscription',
+      return_url: 'cafelocco://manage-subscription',
     });
 
     return new Response(

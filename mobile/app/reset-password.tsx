@@ -52,7 +52,7 @@ export default function ResetPasswordScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.successContainer}>
           <Text style={styles.successIcon}>✅</Text>
-          <Text style={styles.brand}>BRAXTON</Text>
+          <Text style={styles.brand}>CAFE LOCCO</Text>
           <Text style={styles.successTitle}>Password updated</Text>
           <Text style={styles.successSub}>
             Your password has been changed. Sign in with your new password.
@@ -105,7 +105,7 @@ export default function ResetPasswordScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <Text style={styles.brand}>BRAXTON</Text>
+            <Text style={styles.brand}>CAFE LOCCO</Text>
             <Text style={styles.title}>New password</Text>
             <Text style={styles.subtitle}>Choose a strong password for your account.</Text>
           </View>

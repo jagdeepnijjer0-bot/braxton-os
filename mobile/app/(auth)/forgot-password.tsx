@@ -58,7 +58,7 @@ export default function ForgotPasswordScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.sentContainer}>
           <Text style={styles.sentIcon}>📬</Text>
-          <Text style={styles.brand}>BRAXTON</Text>
+          <Text style={styles.brand}>CAFE LOCCO</Text>
           <Text style={styles.sentTitle}>Reset link sent</Text>
           <Text style={styles.sentBody}>
             If an account exists for{'\n'}
@@ -93,7 +93,7 @@ export default function ForgotPasswordScreen() {
           </TouchableOpacity>
 
           <View style={styles.header}>
-            <Text style={styles.brand}>BRAXTON</Text>
+            <Text style={styles.brand}>CAFE LOCCO</Text>
             <Text style={styles.title}>Reset password</Text>
             <Text style={styles.subtitle}>
               Enter your email address and we'll send you a link to reset your password.

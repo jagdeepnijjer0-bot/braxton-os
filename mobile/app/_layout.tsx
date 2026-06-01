@@ -18,7 +18,7 @@ function parseHashParams(url: string): Record<string, string> {
 async function handleDeepLink(url: string | null) {
   if (!url) return;
 
-  // ── Password reset (braxton://reset-password#access_token=...&type=recovery) ──
+  // ── Password reset (cafelocco://reset-password#access_token=...&type=recovery) ──
   const params = parseHashParams(url);
   if (params.type === 'recovery' && params.access_token && params.refresh_token) {
     await supabase.auth.setSession({
@@ -54,7 +54,7 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY} merchantIdentifier="merchant.com.braxton.restaurant">
+    <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY} merchantIdentifier="merchant.com.cafelocco.app">
       <StatusBar style="light" backgroundColor={Colors.background} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.background } }}>
         <Stack.Screen name="(auth)" />

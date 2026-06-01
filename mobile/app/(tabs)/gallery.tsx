@@ -23,7 +23,7 @@ export default function GalleryScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.tagline}>BRAXTON</Text>
+        <Text style={styles.tagline}>CAFE LOCCO</Text>
         <Text style={styles.title}>Gallery</Text>
         <Text style={styles.subtitle}>A glimpse into our world</Text>
       </View>

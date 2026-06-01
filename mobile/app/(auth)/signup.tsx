@@ -74,7 +74,7 @@ export default function SignupScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.successContainer}>
           <Text style={styles.successIcon}>✉️</Text>
-          <Text style={styles.brand}>BRAXTON</Text>
+          <Text style={styles.brand}>CAFE LOCCO</Text>
           <Text style={styles.successTitle}>Check your email</Text>
           <Text style={styles.successBody}>
             We sent a verification link to{'\n'}
@@ -108,7 +108,7 @@ export default function SignupScreen() {
           </TouchableOpacity>
 
           <View style={styles.header}>
-            <Text style={styles.brand}>BRAXTON</Text>
+            <Text style={styles.brand}>CAFE LOCCO</Text>
             <Text style={styles.title}>Create account</Text>
             <Text style={styles.subtitle}>Join us for an exclusive dining experience</Text>
           </View>

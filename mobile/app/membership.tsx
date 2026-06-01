@@ -78,8 +78,8 @@ export default function MembershipScreen() {
       if (!result?.url) throw new Error('No checkout URL returned.');
 
       // Open Stripe Checkout in the in-app browser.
-      // openAuthSessionAsync closes automatically when Stripe redirects to braxton://
-      const webResult = await WebBrowser.openAuthSessionAsync(result.url, 'braxton://');
+      // openAuthSessionAsync closes automatically when Stripe redirects to cafelocco://
+      const webResult = await WebBrowser.openAuthSessionAsync(result.url, 'cafelocco://');
 
       if (webResult.type === 'success') {
         // Stripe redirected back — subscription is being processed by the webhook
@@ -111,7 +111,7 @@ export default function MembershipScreen() {
           </SafeAreaView>
           <View style={styles.heroContent}>
             <Text style={styles.crownHero}>♛</Text>
-            <Text style={styles.heroTagline}>BRAXTON PREMIUM</Text>
+            <Text style={styles.heroTagline}>CAFE LOCCO PREMIUM</Text>
             <Text style={styles.heroTitle}>The Finest{'\n'}Dining Experience</Text>
             <Text style={styles.heroSubtitle}>
               Join our exclusive membership and unlock a world of privileges.

@@ -14,7 +14,7 @@ export default function MenuScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.tagline}>BRAXTON</Text>
+        <Text style={styles.tagline}>CAFE LOCCO</Text>
         <Text style={styles.title}>Our Menu</Text>
       </View>
 

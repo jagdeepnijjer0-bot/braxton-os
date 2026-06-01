@@ -72,7 +72,7 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           <View style={styles.header}>
-            <Text style={styles.brand}>BRAXTON</Text>
+            <Text style={styles.brand}>CAFE LOCCO</Text>
             <Text style={styles.title}>Welcome back</Text>
             <Text style={styles.subtitle}>Sign in to your account</Text>
           </View>

@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Braxton",
-    "slug": "braxton-restaurant",
+    "name": "Cafe Locco",
+    "slug": "cafe-locco",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "braxton",
+    "scheme": "cafelocco",
     "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/images/splash.png",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.braxton.restaurant",
+      "bundleIdentifier": "com.cafelocco.app",
       "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "Used to upload your profile photo.",
@@ -26,7 +26,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0A0A0A"
       },
-      "package": "com.braxton.restaurant",
+      "package": "com.cafelocco.app",
       "versionCode": 1
     },
     "web": {
@@ -41,13 +41,13 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Braxton to access your photo library."
+          "photosPermission": "Allow Cafe Locco to access your photo library."
         }
       ],
       [
         "@stripe/stripe-react-native",
         {
-          "merchantIdentifier": "merchant.com.braxton.restaurant",
+          "merchantIdentifier": "merchant.com.cafelocco.app",
           "enableGooglePay": true
         }
       ]

@@ -154,7 +154,7 @@ export default function ReservationsScreen() {
 
           <View style={styles.bookingCard}>
             <View style={styles.bookingCardHeader}>
-              <Text style={styles.bookingCardBrand}>BRAXTON</Text>
+              <Text style={styles.bookingCardBrand}>CAFE LOCCO</Text>
               <Text style={styles.bookingCardLabel}>Reservation Request</Text>
             </View>
             <View style={styles.bookingDivider} />
@@ -207,7 +207,7 @@ export default function ReservationsScreen() {
             <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8 }}>
               <Text style={styles.backText}>← Back</Text>
             </TouchableOpacity>
-            <Text style={styles.tagline}>BRAXTON</Text>
+            <Text style={styles.tagline}>CAFE LOCCO</Text>
             <Text style={styles.title}>Reserve a Table</Text>
             <Text style={styles.subtitle}>We look forward to welcoming you</Text>
           </View>
