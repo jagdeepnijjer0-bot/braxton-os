@@ -8,8 +8,6 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-const RESTAURANT_ADDRESS = process.env.EXPO_PUBLIC_RESTAURANT_ADDRESS ?? '24 Mayfair Lane, London W1J 7BX';
 import { Colors } from '@/constants/colors';
 import { Layout } from '@/constants/layout';
 import { HeroSection } from '@/components/home/HeroSection';
@@ -19,15 +17,21 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useMenu } from '@/hooks/useMenu';
 
+const RESTAURANT_ADDRESS = process.env.EXPO_PUBLIC_RESTAURANT_ADDRESS ?? '';
+
 const OPENING_HOURS = [
-  { day: 'Mon – Thu', hours: '12pm – 10pm' },
-  { day: 'Fri – Sat', hours: '12pm – 11pm' },
-  { day: 'Sunday', hours: '11am – 9pm' },
+  { day: 'Monday',    hours: '9am – 8pm' },
+  { day: 'Tuesday',   hours: '9am – 8pm' },
+  { day: 'Wednesday', hours: '9am – 8pm' },
+  { day: 'Thursday',  hours: '9am – 8pm' },
+  { day: 'Friday',    hours: '9am – 8pm' },
+  { day: 'Saturday',  hours: '9am – 8pm' },
+  { day: 'Sunday',    hours: '9am – 8pm' },
 ];
 
 const QUICK_ACTIONS = (nav: typeof router) => [
   { icon: '📅', label: 'Reserve', onPress: () => nav.push('/reservations') },
-  { icon: '📖', label: 'Menu', onPress: () => nav.push('/(tabs)/menu') },
+  { icon: '📖', label: 'Menu',    onPress: () => nav.push('/(tabs)/menu') },
   { icon: '📸', label: 'Gallery', onPress: () => nav.push('/(tabs)/gallery') },
   { icon: '💬', label: 'Contact', onPress: () => nav.push('/contact') },
 ];
@@ -71,22 +75,6 @@ export default function HomeScreen() {
             </View>
           ) : null}
 
-          <View style={styles.story}>
-            <SectionHeader subtitle="Our Story" title="A Legacy of Taste" centered />
-            <Text style={styles.storyText}>
-              Since 2010, Braxton has been crafting unforgettable dining experiences.
-              Our chefs blend classical French technique with local seasonal ingredients
-              to create dishes that celebrate the art of fine dining.
-            </Text>
-            <View style={styles.statsRow}>
-              <Stat value="14+" label="Years" />
-              <View style={styles.statDivider} />
-              <Stat value="3" label="Awards" />
-              <View style={styles.statDivider} />
-              <Stat value="48" label="Seats" />
-            </View>
-          </View>
-
           <View style={styles.hoursCard}>
             <SectionHeader subtitle="We're Open" title="Opening Hours" />
             {OPENING_HOURS.map((h) => (
@@ -95,10 +83,12 @@ export default function HomeScreen() {
                 <Text style={styles.hoursTime}>{h.hours}</Text>
               </View>
             ))}
-            <View style={styles.addressRow}>
-              <Text style={styles.addressIcon}>📍</Text>
-              <Text style={styles.addressText}>{RESTAURANT_ADDRESS}</Text>
-            </View>
+            {RESTAURANT_ADDRESS ? (
+              <View style={styles.addressRow}>
+                <Text style={styles.addressIcon}>📍</Text>
+                <Text style={styles.addressText}>{RESTAURANT_ADDRESS}</Text>
+              </View>
+            ) : null}
           </View>
         </View>
       </ScrollView>
@@ -106,41 +96,12 @@ export default function HomeScreen() {
   );
 }
 
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <View style={styles.stat}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  scroll: { paddingBottom: Layout.tabBarHeight + Layout.spacing.xl },
-  content: { padding: Layout.spacing.lg, gap: Layout.spacing.xl },
+  container:    { flex: 1, backgroundColor: Colors.background },
+  scroll:       { paddingBottom: Layout.tabBarHeight + Layout.spacing.xl },
+  content:      { padding: Layout.spacing.lg, gap: Layout.spacing.xl },
   featuredList: { paddingBottom: Layout.spacing.xs },
-  story: { alignItems: 'center', gap: Layout.spacing.md },
-  storyText: {
-    fontSize: Layout.fontSize.base,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 26,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.borderRadius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Layout.spacing.lg,
-    width: '100%',
-    alignItems: 'center',
-  },
-  stat: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: Layout.fontSize.xxl, color: Colors.gold, fontWeight: '800' },
-  statLabel: { fontSize: Layout.fontSize.xs, color: Colors.textSecondary, letterSpacing: 1, marginTop: 2 },
-  statDivider: { width: 1, height: 32, backgroundColor: Colors.border },
+
   hoursCard: {
     backgroundColor: Colors.surface,
     borderRadius: Layout.borderRadius.lg,
@@ -156,7 +117,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderSubtle,
   },
-  hoursDay: { fontSize: Layout.fontSize.sm, color: Colors.textSecondary },
+  hoursDay:  { fontSize: Layout.fontSize.sm, color: Colors.textSecondary },
   hoursTime: { fontSize: Layout.fontSize.sm, color: Colors.textPrimary, fontWeight: '600' },
   addressRow: {
     flexDirection: 'row',

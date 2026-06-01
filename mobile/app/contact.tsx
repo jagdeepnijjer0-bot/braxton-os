@@ -22,13 +22,13 @@ import { ContactMessageInput } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 
 // ── Contact details from env — set these in your .env file ───────────────────
-const PHONE     = process.env.EXPO_PUBLIC_RESTAURANT_PHONE     ?? '+441234567890';
-const WHATSAPP  = process.env.EXPO_PUBLIC_RESTAURANT_WHATSAPP  ?? '+441234567890';
-const EMAIL     = process.env.EXPO_PUBLIC_RESTAURANT_EMAIL     ?? 'hello@braxtonrestaurant.com';
-const ADDRESS   = process.env.EXPO_PUBLIC_RESTAURANT_ADDRESS   ?? '24 Mayfair Lane, London W1J 7BX';
-const INSTAGRAM = process.env.EXPO_PUBLIC_RESTAURANT_INSTAGRAM ?? 'https://instagram.com/braxton';
-const TIKTOK    = process.env.EXPO_PUBLIC_RESTAURANT_TIKTOK    ?? 'https://tiktok.com/@braxton';
-const FACEBOOK  = process.env.EXPO_PUBLIC_RESTAURANT_FACEBOOK  ?? 'https://facebook.com/braxton';
+const PHONE     = process.env.EXPO_PUBLIC_RESTAURANT_PHONE     ?? '';
+const WHATSAPP  = process.env.EXPO_PUBLIC_RESTAURANT_WHATSAPP  ?? '';
+const EMAIL     = process.env.EXPO_PUBLIC_RESTAURANT_EMAIL     ?? '';
+const ADDRESS   = process.env.EXPO_PUBLIC_RESTAURANT_ADDRESS   ?? '';
+const INSTAGRAM = process.env.EXPO_PUBLIC_RESTAURANT_INSTAGRAM ?? '';
+const TIKTOK    = process.env.EXPO_PUBLIC_RESTAURANT_TIKTOK    ?? '';
+const FACEBOOK  = process.env.EXPO_PUBLIC_RESTAURANT_FACEBOOK  ?? '';
 
 const BLANK_FORM: ContactMessageInput = { name: '', email: '', phone: '', message: '' };
 
@@ -110,7 +110,7 @@ export default function ContactScreen() {
 
   function openWhatsApp() {
     const number = WHATSAPP.replace(/[^\d]/g, '');
-    const text   = encodeURIComponent('Hello, I have an enquiry about Braxton Restaurant.');
+    const text   = encodeURIComponent('Hello, I have an enquiry.');
     openURL(`https://wa.me/${number}?text=${text}`);
   }
 
@@ -190,14 +190,14 @@ export default function ContactScreen() {
             <Text style={styles.subtitle}>We'd love to hear from you</Text>
           </View>
 
-          {/* ── Quick-contact row ── */}
+          {/* ── Quick-contact row — only renders buttons for configured channels ── */}
           <View style={styles.quickRow}>
-            <QuickBtn emoji="📞" label="Call"      onPress={() => openURL(`tel:${PHONE}`)} />
-            <QuickBtn emoji="💬" label="WhatsApp"  onPress={openWhatsApp} />
-            <QuickBtn emoji="📧" label="Email"     onPress={() => openURL(`mailto:${EMAIL}`)} />
-            <QuickBtn emoji="📸" label="Instagram" onPress={() => openURL(INSTAGRAM)} />
-            <QuickBtn emoji="🎵" label="TikTok"    onPress={() => openURL(TIKTOK)} />
-            <QuickBtn emoji="👥" label="Facebook"  onPress={() => openURL(FACEBOOK)} />
+            {PHONE     ? <QuickBtn emoji="📞" label="Call"      onPress={() => openURL(`tel:${PHONE}`)} /> : null}
+            {WHATSAPP  ? <QuickBtn emoji="💬" label="WhatsApp"  onPress={openWhatsApp} /> : null}
+            {EMAIL     ? <QuickBtn emoji="📧" label="Email"     onPress={() => openURL(`mailto:${EMAIL}`)} /> : null}
+            {INSTAGRAM ? <QuickBtn emoji="📸" label="Instagram" onPress={() => openURL(INSTAGRAM)} /> : null}
+            {TIKTOK    ? <QuickBtn emoji="🎵" label="TikTok"    onPress={() => openURL(TIKTOK)} /> : null}
+            {FACEBOOK  ? <QuickBtn emoji="👥" label="Facebook"  onPress={() => openURL(FACEBOOK)} /> : null}
           </View>
 
           <View style={styles.divider} />
@@ -252,12 +252,14 @@ export default function ContactScreen() {
           </View>
 
           {/* ── Address card ── */}
-          <View style={styles.addressCard}>
-            <Text style={styles.addressTitle}>Find Us</Text>
-            <Text style={styles.addressLine}>📍 {ADDRESS}</Text>
-            <Text style={styles.addressLine}>📞 {PHONE}</Text>
-            <Text style={styles.addressLine}>✉️ {EMAIL}</Text>
-          </View>
+          {(ADDRESS || PHONE || EMAIL) ? (
+            <View style={styles.addressCard}>
+              <Text style={styles.addressTitle}>Find Us</Text>
+              {ADDRESS ? <Text style={styles.addressLine}>📍 {ADDRESS}</Text> : null}
+              {PHONE   ? <Text style={styles.addressLine}>📞 {PHONE}</Text>   : null}
+              {EMAIL   ? <Text style={styles.addressLine}>✉️ {EMAIL}</Text>   : null}
+            </View>
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
