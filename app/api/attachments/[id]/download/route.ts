@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { createSignedDownloadUrl } from "@/lib/storage/server";
 
-// GET /api/attachments/:id/download → redirects to signed download URL
+// GET /api/attachments/:id/download → redirects to signed download URL (1h TTL)
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -15,7 +15,7 @@ export async function GET(
 
   const { data: attachment, error } = await supabase
     .from("file_attachments")
-    .select("storage_path, filename")
+    .select("storage_path, bucket, filename")
     .eq("id", id)
     .single();
 
@@ -24,7 +24,10 @@ export async function GET(
   }
 
   try {
-    const url = await createSignedDownloadUrl(attachment.storage_path);
+    const url = await createSignedDownloadUrl(
+      attachment.storage_path,
+      attachment.bucket ?? "attachments",
+    );
     return NextResponse.redirect(url);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

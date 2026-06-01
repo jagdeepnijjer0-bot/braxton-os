@@ -14,7 +14,9 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const eventName = searchParams.get("event_name") ?? undefined;
+  // Accept both ?event= (admin page) and ?event_name= (legacy)
+  const eventName = searchParams.get("event") ?? searchParams.get("event_name") ?? undefined;
+  const status    = searchParams.get("status") ?? undefined;
   const limit     = Math.min(200, Math.max(1, parseInt(searchParams.get("limit") ?? "50", 10)));
   const page      = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
   const offset    = (page - 1) * limit;
@@ -26,9 +28,16 @@ export async function GET(req: NextRequest) {
     .range(offset, offset + limit - 1);
 
   if (eventName) query = query.eq("event_name", eventName);
+  if (status)    query = query.eq("status", status as "ok" | "partial" | "failed");
 
   const { data: logs, count, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ logs: logs ?? [], total: count ?? 0, page, limit });
+  return NextResponse.json({
+    logs:        logs ?? [],
+    total:       count ?? 0,
+    page,
+    limit,
+    total_pages: Math.ceil((count ?? 0) / limit),
+  });
 }

@@ -27,16 +27,34 @@ export default function FormWrapper({ title, description, formType, children, ex
     formData.forEach((v, k) => { if (v !== "") payload[k] = v; });
     if (extraData) Object.assign(payload, extraData);
 
+    console.log("[FormWrapper] Submitting form_type:", formType);
+    console.log("[FormWrapper] Payload:", JSON.stringify(payload));
+    console.log("[FormWrapper] POSTing to: /api/forms/submit");
+
     try {
       const res = await fetch("/api/forms/submit", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(payload),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Submission failed");
+
+      const json = await res.json() as { error?: string; success?: boolean; submission_id?: string; contact_id?: string; webhook_ok?: boolean };
+      console.log("[FormWrapper] Response status:", res.status, "body:", JSON.stringify(json));
+
+      if (!res.ok) {
+        console.error("[FormWrapper] Submission error:", json.error);
+        throw new Error(json.error ?? "Submission failed");
+      }
+
+      if (json.webhook_ok === false) {
+        console.warn("[FormWrapper] Form saved but n8n webhook did not return 200. Check Vercel logs and /admin/webhooks.");
+      } else {
+        console.log("[FormWrapper] n8n webhook confirmed OK");
+      }
+
       router.push(`/forms/success?type=${formType}`);
     } catch (err) {
+      console.error("[FormWrapper] catch:", err);
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);

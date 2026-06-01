@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { verifyCronSecret, dispatchWebhook } from "@/lib/webhooks/dispatcher";
-import type { WebhookEvent } from "@/lib/webhooks/dispatcher";
+import { verifyCronSecret, retryDelivery } from "@/lib/webhooks/dispatcher";
 
 /**
  * POST /api/webhooks/cron/retry-failed
  *
- * Re-dispatches failed webhook deliveries.
- * Fetches all webhook_delivery_logs where:
- *   status = 'failed' AND attempts < 3 AND created_at > now() - 24h
+ * Re-attempts failed webhook deliveries using the stored URL and body.
+ * Updates the original log row — does NOT create duplicate log entries.
  *
+ * Eligibility: status = 'failed', attempts < 6, created_at within 24h
  * Security: Authorization: Bearer <CRON_SECRET>
  */
 export async function POST(req: NextRequest) {
@@ -19,15 +18,13 @@ export async function POST(req: NextRequest) {
   }
 
   const admin = createAdminClient();
-
-  // Fetch failed logs eligible for retry (< 3 attempts, within 24h)
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
   const { data: failedLogs, error: fetchErr } = await admin
     .from("webhook_delivery_logs")
-    .select("id, event, url, request_body, attempts")
+    .select("id")
     .eq("status", "failed")
-    .lt("attempts", 3)
+    .lt("attempts", 6)
     .gte("created_at", since);
 
   if (fetchErr) {
@@ -40,45 +37,9 @@ export async function POST(req: NextRequest) {
 
   for (const log of failedLogs ?? []) {
     retried++;
-    const start = Date.now();
-    let httpStatus: number | null = null;
-    let errorMsg:   string | null = null;
-    let success = false;
-
-    try {
-      // Re-dispatch using the stored event and request_body data
-      const data = (log.request_body as { data?: Record<string, unknown> })?.data ?? {};
-      await dispatchWebhook(log.event as WebhookEvent, data);
-      // If dispatchWebhook didn't throw, treat as initiated (it handles its own retry/logging)
-      success = true;
-    } catch (err) {
-      errorMsg = err instanceof Error ? err.message : String(err);
-    }
-
-    const responseMs = Date.now() - start;
-
-    // Update the log row
-    try {
-      await admin
-        .from("webhook_delivery_logs")
-        .update({
-          status:          success ? "success" : "failed",
-          attempts:        (log.attempts ?? 0) + 1,
-          http_status:     httpStatus,
-          response_ms:     responseMs,
-          error_message:   errorMsg,
-          last_attempt_at: new Date().toISOString(),
-        })
-        .eq("id", log.id);
-    } catch {
-      // Never block
-    }
-
-    if (success) {
-      succeeded++;
-    } else {
-      still_failed++;
-    }
+    const result = await retryDelivery(log.id);
+    if (result.ok) succeeded++;
+    else           still_failed++;
   }
 
   return NextResponse.json({ retried, succeeded, still_failed });

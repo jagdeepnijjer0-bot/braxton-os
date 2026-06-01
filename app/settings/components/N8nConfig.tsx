@@ -25,6 +25,7 @@ interface N8nSettings {
   id?: string;
   enabled:      boolean;
   base_url:     string | null;
+  url_mode:     "append_event" | "fixed";
   event_config: Record<string, EventConfig>;
 }
 
@@ -66,10 +67,12 @@ export default function N8nConfig() {
   const [envStatus, setEnvStatus] = useState({ enabled: false, base_url: false, secret: false });
 
   // Edit state — managed locally, only synced from server on initial load
-  const [enabled,  setEnabled]  = useState(false);
-  const [baseUrl,  setBaseUrl]  = useState("");
-  const [evtCfg,   setEvtCfg]   = useState<Record<string, EventConfig>>({});
+  const [enabled,   setEnabled]   = useState(false);
+  const [baseUrl,   setBaseUrl]   = useState("");
+  const [urlMode,   setUrlMode]   = useState<"append_event" | "fixed">("append_event");
+  const [evtCfg,    setEvtCfg]    = useState<Record<string, EventConfig>>({});
   const [showSecret, setShowSecret] = useState(false);
+  const [urlPreviews, setUrlPreviews] = useState<Record<string, string | null>>({});
 
   // Generate candidate secret once, stably
   const secretHint = useRef<string>("");
@@ -92,11 +95,17 @@ export default function N8nConfig() {
       const res = await fetch("/api/integrations/n8n");
       if (!res.ok) throw new Error(await res.text());
       const json = await res.json();
-      const s: N8nSettings = json.settings ?? { enabled: false, base_url: null, event_config: {} };
+      const s: N8nSettings = json.settings ?? { enabled: false, base_url: null, url_mode: "append_event", event_config: {} };
       setEnabled(s.enabled);
       setBaseUrl(s.base_url ?? "");
+      setUrlMode(s.url_mode ?? "append_event");
       setEvtCfg(s.event_config ?? {});
       setEnvStatus(json.env_configured ?? {});
+      // Load resolved URL previews in parallel
+      fetch("/api/integrations/n8n/url-preview")
+        .then(r => r.ok ? r.json() : null)
+        .then((d: { urls: Record<string, string | null> } | null) => { if (d?.urls) setUrlPreviews(d.urls); })
+        .catch(() => { /* non-critical */ });
     } catch {
       toastRef.current.error("Failed to load n8n settings");
     } finally {
@@ -112,7 +121,7 @@ export default function N8nConfig() {
       const res = await fetch("/api/integrations/n8n", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ enabled, base_url: baseUrl || null, event_config: evtCfg }),
+        body:    JSON.stringify({ enabled, base_url: baseUrl || null, url_mode: urlMode, event_config: evtCfg }),
       });
       if (!res.ok) throw new Error((await res.json()).error ?? "Save failed");
       const json = await res.json();
@@ -121,7 +130,13 @@ export default function N8nConfig() {
         const s: N8nSettings = json.settings;
         setEnabled(s.enabled);
         setBaseUrl(s.base_url ?? "");
+        setUrlMode(s.url_mode ?? "append_event");
         setEvtCfg(s.event_config ?? {});
+        // Refresh URL previews after save
+        fetch("/api/integrations/n8n/url-preview")
+          .then(r => r.ok ? r.json() : null)
+          .then((d: { urls: Record<string, string | null> } | null) => { if (d?.urls) setUrlPreviews(d.urls); })
+          .catch(() => { /* non-critical */ });
       }
       toastRef.current.success("Settings saved");
     } catch (err) {
@@ -218,15 +233,58 @@ export default function N8nConfig() {
                 type="url"
                 value={baseUrl}
                 onChange={e => setBaseUrl(e.target.value)}
-                placeholder="https://n8n.yourcompany.com/webhook/braxton-os"
+                placeholder="http://35.234.138.153:5678/webhook/braxton-os"
                 className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
               />
               {baseUrl && <CopyButton text={baseUrl} />}
             </div>
-            <p className="text-xs text-gray-400 mt-1">
-              Events fire to <code className="bg-gray-100 px-1 rounded">{"{base_url}"}/new-contact</code>,{" "}
-              <code className="bg-gray-100 px-1 rounded">{"{base_url}"}/hot-lead</code>, etc. Override per-event below.
-            </p>
+          </div>
+
+          {/* URL mode */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">URL Mode</label>
+            <div className="flex gap-3">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="url_mode"
+                  value="append_event"
+                  checked={urlMode === "append_event"}
+                  onChange={() => setUrlMode("append_event")}
+                  className="mt-0.5"
+                />
+                <div>
+                  <p className="text-xs font-medium text-gray-800">Append event name</p>
+                  <p className="text-xs text-gray-400">
+                    {baseUrl
+                      ? <><code className="bg-gray-100 px-1 rounded">{baseUrl.replace(/\/$/, "")}/website_lead</code></>
+                      : <><code className="bg-gray-100 px-1 rounded">{"{base_url}"}/website_lead</code></>
+                    }
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">One n8n webhook per event type</p>
+                </div>
+              </label>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="url_mode"
+                  value="fixed"
+                  checked={urlMode === "fixed"}
+                  onChange={() => setUrlMode("fixed")}
+                  className="mt-0.5"
+                />
+                <div>
+                  <p className="text-xs font-medium text-gray-800">Fixed URL</p>
+                  <p className="text-xs text-gray-400">
+                    {baseUrl
+                      ? <code className="bg-gray-100 px-1 rounded">{baseUrl.replace(/\/$/, "")}</code>
+                      : <code className="bg-gray-100 px-1 rounded">{"{base_url}"}</code>
+                    }
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">Single n8n webhook — distinguish by <code className="bg-gray-100 px-0.5 rounded">event</code> field in body</p>
+                </div>
+              </label>
+            </div>
           </div>
 
           {/* Inbound URL */}
@@ -325,15 +383,26 @@ export default function N8nConfig() {
                 </div>
 
                 {isOn && (
-                  <div className="mt-2 ml-9 flex items-center gap-2">
-                    <input
-                      type="url"
-                      value={urlValue}
-                      onChange={e => setEventUrl(evt.key, e.target.value)}
-                      placeholder={baseUrl ? `${baseUrl.replace(/\/$/, "")}/${evt.key.replace(/_/g, "-")} (default)` : "Custom URL override (optional)"}
-                      className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg font-mono focus:outline-none focus:ring-1 focus:ring-indigo-400 text-gray-700 placeholder-gray-300"
-                    />
-                    {urlValue && <CopyButton text={urlValue} />}
+                  <div className="mt-2 ml-9 space-y-1">
+                    {/* Resolved URL preview */}
+                    {!urlValue && urlPreviews[evt.key] && (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 border border-indigo-100 rounded-lg">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-indigo-400 flex-shrink-0"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        <code className="flex-1 text-xs text-indigo-700 truncate">{urlPreviews[evt.key]}</code>
+                        <CopyButton text={urlPreviews[evt.key]!} />
+                      </div>
+                    )}
+                    {/* Per-event URL override */}
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="url"
+                        value={urlValue}
+                        onChange={e => setEventUrl(evt.key, e.target.value)}
+                        placeholder="Override URL (optional)"
+                        className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg font-mono focus:outline-none focus:ring-1 focus:ring-indigo-400 text-gray-700 placeholder-gray-300"
+                      />
+                      {urlValue && <CopyButton text={urlValue} />}
+                    </div>
                   </div>
                 )}
               </div>

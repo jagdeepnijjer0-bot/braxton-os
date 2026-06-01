@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-// These paths are accessible without being logged in
-const PUBLIC_PATHS = ["/login", "/signup"];
+// These paths are accessible without being logged in.
+// /demo and /api/demo are fully public — no Supabase auth required.
+// Demo workspace uses its own braxton_demo_token cookie, checked in the workspace layout.
+const PUBLIC_PATHS = ["/login", "/signup", "/demo", "/api/demo"];
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;

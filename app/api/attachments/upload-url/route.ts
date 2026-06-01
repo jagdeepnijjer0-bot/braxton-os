@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { createSignedUploadUrl } from "@/lib/storage/server";
-import { storagePath, ALLOWED_MIME_TYPES, MAX_FILE_SIZE } from "@/lib/storage/config";
+import { storagePath, getBucketForEntity, ALLOWED_MIME_TYPES, MAX_FILE_SIZE } from "@/lib/storage/config";
 import type { FileEntityType } from "@/lib/storage/config";
+import { DEMO_COOKIE } from "@/lib/demo/session";
 
 // POST /api/attachments/upload-url
 // Body: { entity_type, entity_id, filename, mime_type, file_size }
-// Returns: { signedUrl, token, path }
+// Returns: { signedUrl, token, path, bucket }
 export async function POST(req: NextRequest) {
+  // Block demo users — they have no Supabase auth and must not upload to real buckets
+  if (req.cookies.get(DEMO_COOKIE)?.value) {
+    return NextResponse.json({ error: "File uploads are not available in the demo." }, { status: 403 });
+  }
+
   const supabase = await createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -37,10 +43,11 @@ export async function POST(req: NextRequest) {
 
   const fileId = crypto.randomUUID();
   const path   = storagePath(entity_type, entity_id, fileId, filename);
+  const bucket = getBucketForEntity(entity_type);
 
   try {
-    const result = await createSignedUploadUrl(path);
-    return NextResponse.json({ ok: true, ...result, file_id: fileId });
+    const result = await createSignedUploadUrl(path, bucket);
+    return NextResponse.json({ ok: true, ...result, file_id: fileId, bucket });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: message }, { status: 500 });

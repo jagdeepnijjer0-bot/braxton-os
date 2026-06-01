@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
   }
 
-  let body: { enabled?: boolean; base_url?: string | null; event_config?: Record<string, unknown> };
+  let body: { enabled?: boolean; base_url?: string | null; url_mode?: string; event_config?: Record<string, unknown> };
   try { body = await req.json(); }
   catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
 
@@ -60,21 +60,28 @@ export async function POST(req: NextRequest) {
       updated_at: new Date().toISOString(),
       updated_by: user.id,
     };
-    if ("enabled"      in body && body.enabled      !== undefined) update.enabled      = body.enabled;
-    if ("base_url"     in body) update.base_url      = body.base_url ?? null;
-    if ("event_config" in body) update.event_config  = body.event_config as EventCfg;
+    const patch: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+      updated_by: user.id,
+    };
+    if ("enabled"      in body && body.enabled      !== undefined) patch.enabled      = body.enabled;
+    if ("base_url"     in body) patch.base_url      = body.base_url ?? null;
+    if ("url_mode"     in body && body.url_mode)     patch.url_mode  = body.url_mode;
+    if ("event_config" in body) patch.event_config  = body.event_config;
     result = await supabase
-      .from("n8n_settings").update(update).eq("id", existing.id).select().single();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from("n8n_settings").update(patch as any).eq("id", existing.id).select().single();
   } else {
+    const row: Record<string, unknown> = {
+      enabled:      body.enabled      ?? false,
+      base_url:     body.base_url     ?? null,
+      url_mode:     body.url_mode     ?? "append_event",
+      event_config: body.event_config ?? {},
+      updated_by:   user.id,
+    };
     result = await supabase
-      .from("n8n_settings")
-      .insert({
-        enabled:      body.enabled      ?? false,
-        base_url:     body.base_url     ?? null,
-        event_config: (body.event_config ?? {}) as EventCfg,
-        updated_by:   user.id,
-      })
-      .select().single();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from("n8n_settings").insert(row as any).select().single();
   }
 
   if (result.error) return NextResponse.json({ error: result.error.message }, { status: 500 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { logAudit, buildDiff } from "@/lib/audit";
+import { emit } from "@/lib/events/emit";
 import type { Database } from "@/lib/supabase/types";
 
 type ContactUpdate = Database["public"]["Tables"]["contacts"]["Update"];
@@ -79,6 +80,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     entityId:   id,
     changes:    before ? buildDiff(before as Record<string, unknown>, data as Record<string, unknown>) : undefined,
   });
+
+  void emit("lead.updated", {
+    contact_id: id,
+    name:       data.name,
+    email:      data.email,
+    changes:    before ? buildDiff(before as Record<string, unknown>, data as Record<string, unknown>) : undefined,
+  }, { entityType: "contact", entityId: id, triggeredBy: user?.id });
 
   return NextResponse.json(data);
 }

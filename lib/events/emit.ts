@@ -17,21 +17,31 @@ export type BraxtonEventName =
   | "file.uploaded"
   | "website_lead"
   | "outreach.reply"
-  | "followup.overdue";
+  | "followup.overdue"
+  | "demo.access_created"
+  | "demo.high_intent"
+  | "demo.package_reserved"
+  | "demo.book_call_clicked"
+  | "file.deleted";
 
 const EVENT_MAP: Record<BraxtonEventName, WebhookEvent> = {
-  "lead.created":      "new_contact",
-  "lead.updated":      "lead_updated",
-  "ai.hot_lead":       "hot_lead",
-  "task.created":      "task_created",
-  "task.overdue":      "task_overdue",
-  "message.received":  "message_received",
-  "deal.updated":      "deal_updated",
-  "deal.stage_changed": "deal_stage_changed",
-  "file.uploaded":     "file_uploaded",
-  "website_lead":      "website_lead",
-  "outreach.reply":    "outreach_reply",
-  "followup.overdue":  "overdue_followup",
+  "lead.created":           "new_contact",
+  "lead.updated":           "lead_updated",
+  "ai.hot_lead":            "hot_lead",
+  "task.created":           "task_created",
+  "task.overdue":           "task_overdue",
+  "message.received":       "message_received",
+  "deal.updated":           "deal_updated",
+  "deal.stage_changed":     "deal_stage_changed",
+  "file.uploaded":          "file_uploaded",
+  "website_lead":           "website_lead",
+  "outreach.reply":         "outreach_reply",
+  "followup.overdue":       "overdue_followup",
+  "demo.access_created":    "demo_access_created",
+  "demo.high_intent":       "demo_high_intent",
+  "demo.package_reserved":  "demo_package_reserved",
+  "demo.book_call_clicked": "demo_book_call_clicked",
+  "file.deleted":           "file_deleted",
 };
 
 // ── Typed payload interfaces ──────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { emit } from "@/lib/events/emit";
 import type { MessageDirection, InboxStatus } from "@/lib/supabase/types";
 
 interface Ctx { params: Promise<{ id: string }> }
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     }).eq("id", id);
   } else {
     const { data: conv } = await supabase
-      .from("inbox_conversations").select("status").eq("id", id).single();
+      .from("inbox_conversations").select("status, platform, contact_name").eq("id", id).single();
     const newStatus: InboxStatus = conv?.status === "replied" ? "open" : (conv?.status ?? "open") as InboxStatus;
     await supabase.from("inbox_conversations").update({
       latest_message:    snippet,
@@ -54,6 +55,13 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       is_read:           false,
       status:            newStatus,
     }).eq("id", id);
+
+    void emit("message.received", {
+      conversation_id: id,
+      platform:        conv?.platform ?? null,
+      sender_name:     body.sender_name ?? conv?.contact_name ?? null,
+      body:            text,
+    }, { entityType: "conversation", entityId: id });
   }
 
   return NextResponse.json(msg, { status: 201 });

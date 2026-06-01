@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit";
 import { emit } from "@/lib/events/emit";
+import { getBucketForEntity } from "@/lib/storage/config";
 import type { FileEntityType } from "@/lib/storage/config";
+import { DEMO_COOKIE } from "@/lib/demo/session";
 
 // GET /api/attachments?entity_type=contact&entity_id=xxx
 export async function GET(req: NextRequest) {
@@ -31,6 +33,10 @@ export async function GET(req: NextRequest) {
 
 // POST /api/attachments — save metadata after a successful upload
 export async function POST(req: NextRequest) {
+  if (req.cookies.get(DEMO_COOKIE)?.value) {
+    return NextResponse.json({ error: "File uploads are not available in the demo." }, { status: 403 });
+  }
+
   const supabase = await createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -38,11 +44,14 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
 
-  const { entity_type, entity_id, storage_path, filename, file_size, mime_type, label } = body;
+  const { entity_type, entity_id, storage_path, filename, file_size, mime_type, label, bucket } = body;
 
   if (!entity_type || !entity_id || !storage_path || !filename || !file_size || !mime_type) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
+
+  // Use bucket from client (returned by upload-url), fall back to entity mapping
+  const resolvedBucket = (typeof bucket === "string" && bucket) ? bucket : getBucketForEntity(entity_type as FileEntityType);
 
   const { data, error } = await supabase
     .from("file_attachments")
@@ -50,6 +59,7 @@ export async function POST(req: NextRequest) {
       entity_type,
       entity_id,
       storage_path,
+      bucket: resolvedBucket,
       filename,
       file_size,
       mime_type,
