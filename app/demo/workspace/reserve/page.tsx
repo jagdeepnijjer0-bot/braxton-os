@@ -79,7 +79,7 @@ export default function DemoReservePage() {
               "Your interest has been logged against your demo profile",
               "A strategy call will be arranged to understand your workflow",
               "We'll recommend the right build and scope for your business",
-              "No payment is taken until you&apos;re fully comfortable",
+              "No payment is taken until you're fully comfortable",
             ].map((step, i) => (
               <div key={i} className="flex items-start gap-3">
                 <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{i + 1}</div>
