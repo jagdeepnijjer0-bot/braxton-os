@@ -8,6 +8,8 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+const RESTAURANT_ADDRESS = process.env.EXPO_PUBLIC_RESTAURANT_ADDRESS ?? '24 Mayfair Lane, London W1J 7BX';
 import { Colors } from '@/constants/colors';
 import { Layout } from '@/constants/layout';
 import { HeroSection } from '@/components/home/HeroSection';
@@ -95,9 +97,7 @@ export default function HomeScreen() {
             ))}
             <View style={styles.addressRow}>
               <Text style={styles.addressIcon}>📍</Text>
-              <Text style={styles.addressText}>
-                24 Mayfair Lane, London W1J 7BX
-              </Text>
+              <Text style={styles.addressText}>{RESTAURANT_ADDRESS}</Text>
             </View>
           </View>
         </View>
