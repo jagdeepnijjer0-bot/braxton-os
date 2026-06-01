@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createDemoSession, DEMO_COOKIE } from "@/lib/demo/session";
 import { dispatchWebhook } from "@/lib/webhooks/dispatcher";
+import { sendDemoLeadEmail, sendDemoLeadTelegram } from "@/lib/demo/notify";
 
 /**
  * POST /api/demo/access
@@ -147,6 +148,21 @@ export async function POST(req: NextRequest) {
         linked_contact_id: contact_id,
       });
     } catch { /* non-critical */ }
+
+    // Instant lead notifications — email + Telegram
+    const notifyPayload = {
+      sessionId:    session.id,
+      name,
+      email,
+      businessName: business_name || null,
+      industry:     industry || null,
+      bottleneck:   bottleneck || problem || null,
+      timestamp:    new Date().toUTCString(),
+    };
+    await Promise.allSettled([
+      sendDemoLeadEmail(notifyPayload),
+      sendDemoLeadTelegram(notifyPayload),
+    ]);
   })();
 
   const response = NextResponse.json(
