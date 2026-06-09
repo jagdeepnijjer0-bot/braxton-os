@@ -20,13 +20,13 @@ import { useMenu } from '@/hooks/useMenu';
 const RESTAURANT_ADDRESS = process.env.EXPO_PUBLIC_RESTAURANT_ADDRESS ?? '';
 
 const OPENING_HOURS = [
-  { day: 'Monday',    hours: '9am – 8pm' },
-  { day: 'Tuesday',   hours: '9am – 8pm' },
-  { day: 'Wednesday', hours: '9am – 8pm' },
-  { day: 'Thursday',  hours: '9am – 8pm' },
-  { day: 'Friday',    hours: '9am – 8pm' },
-  { day: 'Saturday',  hours: '9am – 8pm' },
-  { day: 'Sunday',    hours: '9am – 8pm' },
+  { day: 'Monday',    hours: process.env.EXPO_PUBLIC_HOURS_MON ?? '9am – 8pm' },
+  { day: 'Tuesday',   hours: process.env.EXPO_PUBLIC_HOURS_TUE ?? '9am – 8pm' },
+  { day: 'Wednesday', hours: process.env.EXPO_PUBLIC_HOURS_WED ?? '9am – 8pm' },
+  { day: 'Thursday',  hours: process.env.EXPO_PUBLIC_HOURS_THU ?? '9am – 8pm' },
+  { day: 'Friday',    hours: process.env.EXPO_PUBLIC_HOURS_FRI ?? '9am – 8pm' },
+  { day: 'Saturday',  hours: process.env.EXPO_PUBLIC_HOURS_SAT ?? '9am – 8pm' },
+  { day: 'Sunday',    hours: process.env.EXPO_PUBLIC_HOURS_SUN ?? '9am – 8pm' },
 ];
 
 const QUICK_ACTIONS = (nav: typeof router) => [
