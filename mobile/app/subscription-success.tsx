@@ -1,32 +1,31 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { Layout } from '@/constants/layout';
-import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/useAuth';
 import { useMembership } from '@/hooks/useMembership';
 
 // Poll for Stripe webhook to update DB — webhook fires async after checkout
-const MAX_POLLS    = 15;   // 15 × 2 s = 30 s maximum wait
+const MAX_POLLS        = 15;   // 15 × 2 s = 30 s maximum wait
 const POLL_INTERVAL_MS = 2000;
 
 const PERKS = [
-  '☕  Monthly free coffee',
-  '📅  Priority reservations',
-  '🥂  Welcome drink on every visit',
-  '✦   Exclusive member events',
+  'MONTHLY FREE COFFEE',
+  'PRIORITY RESERVATIONS',
+  'WELCOME DRINK ON EVERY VISIT',
+  'EXCLUSIVE MEMBER EVENTS',
 ];
 
 export default function SubscriptionSuccessScreen() {
   const { user } = useAuth();
   const { isPremium, refetch } = useMembership(user?.id);
+  const insets = useSafeAreaInsets();
 
-  const [confirmed, setConfirmed]   = useState(false);
-  const [timedOut, setTimedOut]     = useState(false);
-  const pollCountRef                = useRef(0);
+  const [confirmed, setConfirmed] = useState(false);
+  const [timedOut,  setTimedOut]  = useState(false);
+  const pollCountRef              = useRef(0);
 
   useEffect(() => {
     if (isPremium) {
@@ -51,107 +50,138 @@ export default function SubscriptionSuccessScreen() {
   // ── Timed out (webhook very delayed) ──────────────────────────────────────
   if (timedOut && !confirmed) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.container}>
-          <Text style={styles.icon}>⏳</Text>
-          <Text style={styles.title}>Almost there…</Text>
-          <Text style={styles.body}>
-            Your payment was received but it's taking a moment to activate. Pull to refresh on the Account screen in a few seconds.
+      <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        <View style={styles.centeredContainer}>
+          <Text style={styles.stateIcon}>⏳</Text>
+          <Text style={styles.stateTitle}>ALMOST THERE…</Text>
+          <Text style={styles.stateBody}>
+            YOUR PAYMENT WAS RECEIVED BUT IT'S TAKING A MOMENT TO ACTIVATE. CHECK THE ACCOUNT
+            SCREEN IN A FEW SECONDS.
           </Text>
-          <Button
-            title="Go to Account"
+          <TouchableOpacity
+            style={[styles.primaryBtn, { marginTop: Layout.spacing.lg }]}
             onPress={() => router.replace('/account')}
-            fullWidth
-            size="lg"
-            style={{ marginTop: Layout.spacing.lg }}
-          />
-          <Button
-            title="View Subscription"
+            activeOpacity={0.85}
+          >
+            <Text style={styles.primaryBtnText}>GO TO ACCOUNT</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.outlineBtn}
             onPress={() => router.replace('/manage-subscription')}
-            variant="outline"
-            fullWidth
-          />
+            activeOpacity={0.85}
+          >
+            <Text style={styles.outlineBtnText}>VIEW SUBSCRIPTION</Text>
+          </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   // ── Waiting for webhook ────────────────────────────────────────────────────
   if (!confirmed) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.container}>
-          <ActivityIndicator size="large" color={Colors.gold} />
-          <Text style={styles.waitingTitle}>Activating your membership…</Text>
-          <Text style={styles.waitingBody}>This only takes a few seconds.</Text>
+      <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        <View style={styles.centeredContainer}>
+          <ActivityIndicator size="large" color={Colors.textPrimary} />
+          <Text style={styles.waitingTitle}>ACTIVATING YOUR MEMBERSHIP…</Text>
+          <Text style={styles.waitingBody}>THIS ONLY TAKES A FEW SECONDS.</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   // ── Success ────────────────────────────────────────────────────────────────
   return (
-    <LinearGradient colors={['#1A1200', '#0A0A0A']} style={styles.gradient}>
-      <SafeAreaView style={styles.gradientSafe}>
-        <View style={styles.successContainer}>
-          <Text style={styles.crown}>♛</Text>
-          <Text style={styles.tagline}>CAFE LOCCO PREMIUM</Text>
-          <Text style={styles.successTitle}>Welcome to Premium!</Text>
-          <Text style={styles.successBody}>
-            Your membership is now active. Enjoy your exclusive benefits.
-          </Text>
+    <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <View style={styles.successContainer}>
+        <Text style={styles.crown}>♛</Text>
+        <Text style={styles.tagline}>CAFE LOCCO PREMIUM</Text>
+        <Text style={styles.successTitle}>WELCOME TO PREMIUM</Text>
+        <Text style={styles.successBody}>
+          YOUR MEMBERSHIP IS NOW ACTIVE. ENJOY YOUR EXCLUSIVE BENEFITS.
+        </Text>
 
-          <View style={styles.perksList}>
-            {PERKS.map((perk) => (
-              <View key={perk} style={styles.perkRow}>
-                <Text style={styles.perkText}>{perk}</Text>
-              </View>
-            ))}
-          </View>
-
-          <Button
-            title="Explore Your Benefits"
-            onPress={() => router.replace('/account')}
-            fullWidth
-            size="lg"
-            style={{ marginTop: Layout.spacing.lg }}
-          />
-          <Button
-            title="Claim Your Free Coffee"
-            onPress={() => router.replace('/coffee-claim')}
-            variant="outline"
-            fullWidth
-          />
+        <View style={styles.perksList}>
+          {PERKS.map((perk, index) => (
+            <View
+              key={perk}
+              style={[
+                styles.perkRow,
+                index === PERKS.length - 1 && styles.perkRowLast,
+              ]}
+            >
+              <Text style={styles.perkText}>{perk}</Text>
+            </View>
+          ))}
         </View>
-      </SafeAreaView>
-    </LinearGradient>
+
+        <TouchableOpacity
+          style={[styles.primaryBtn, { marginTop: Layout.spacing.lg }]}
+          onPress={() => router.replace('/my-membership')}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.primaryBtnText}>VIEW MY MEMBERSHIP</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.outlineBtn}
+          onPress={() => router.replace('/coffee-claim')}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.outlineBtnText}>CLAIM FREE COFFEE</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
+  root: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
 
-  container: {
+  centeredContainer: {
     flex: 1,
     padding: Layout.spacing.xl,
     justifyContent: 'center',
     alignItems: 'center',
     gap: Layout.spacing.md,
-    backgroundColor: Colors.background,
   },
 
-  // Waiting states
-  waitingTitle: { fontSize: Layout.fontSize.lg, color: Colors.textPrimary, fontWeight: '700', textAlign: 'center', marginTop: Layout.spacing.md },
-  waitingBody:  { fontSize: Layout.fontSize.sm, color: Colors.textSecondary, textAlign: 'center' },
+  // Waiting state
+  waitingTitle: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textPrimary,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: Layout.letterSpacing.wider,
+    marginTop: Layout.spacing.md,
+  },
+  waitingBody: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    letterSpacing: Layout.letterSpacing.wider,
+  },
 
   // Timeout state
-  icon:  { fontSize: 52, textAlign: 'center' },
-  title: { fontSize: Layout.fontSize.xxl, color: Colors.textPrimary, fontWeight: '800', textAlign: 'center' },
-  body:  { fontSize: Layout.fontSize.base, color: Colors.textSecondary, textAlign: 'center', lineHeight: 24 },
+  stateIcon: { fontSize: 52, textAlign: 'center' },
+  stateTitle: {
+    fontSize: Layout.fontSize.base,
+    color: Colors.textPrimary,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: Layout.letterSpacing.wider,
+  },
+  stateBody: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    letterSpacing: Layout.letterSpacing.wider,
+  },
 
   // Success state
-  gradient:     { flex: 1 },
-  gradientSafe: { flex: 1 },
   successContainer: {
     flex: 1,
     padding: Layout.spacing.xl,
@@ -159,25 +189,84 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Layout.spacing.md,
   },
-  crown:        { fontSize: 52, textAlign: 'center' },
-  tagline:      { fontSize: Layout.fontSize.xs, color: Colors.gold, letterSpacing: 3, fontWeight: '700', textAlign: 'center' },
-  successTitle: { fontSize: Layout.fontSize.xxxl, color: Colors.white, fontWeight: '800', textAlign: 'center', letterSpacing: -0.5 },
-  successBody:  { fontSize: Layout.fontSize.base, color: Colors.textSecondary, textAlign: 'center', lineHeight: 24 },
+  crown: {
+    fontSize: 72,
+    textAlign: 'center',
+    color: Colors.textPrimary,
+  },
+  tagline: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textMuted,
+    letterSpacing: Layout.letterSpacing.wider,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  successTitle: {
+    fontSize: Layout.fontSize.xxl,
+    color: Colors.textPrimary,
+    fontWeight: '800',
+    textAlign: 'center',
+    letterSpacing: Layout.letterSpacing.wider,
+  },
+  successBody: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    letterSpacing: Layout.letterSpacing.wider,
+  },
 
   perksList: {
     width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: Layout.borderRadius.lg,
+    backgroundColor: Colors.background,
+    borderRadius: Layout.borderRadius.card,
     borderWidth: 1,
-    borderColor: 'rgba(201,168,76,0.2)',
+    borderColor: Colors.borderCard,
     overflow: 'hidden',
     marginTop: Layout.spacing.sm,
   },
   perkRow: {
-    paddingVertical: Layout.spacing.sm,
-    paddingHorizontal: Layout.spacing.md,
+    paddingVertical: Layout.spacing.md,
+    paddingHorizontal: Layout.spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomColor: Colors.borderCard,
   },
-  perkText: { fontSize: Layout.fontSize.sm, color: Colors.textPrimary },
+  perkRowLast: {
+    borderBottomWidth: 0,
+  },
+  perkText: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textPrimary,
+    fontWeight: '600',
+    letterSpacing: Layout.letterSpacing.wider,
+  },
+
+  // Shared buttons
+  primaryBtn: {
+    width: '100%',
+    backgroundColor: Colors.white,
+    borderRadius: Layout.borderRadius.full,
+    paddingVertical: Layout.spacing.md,
+    alignItems: 'center',
+  },
+  primaryBtnText: {
+    color: Colors.background,
+    fontSize: Layout.fontSize.sm,
+    fontWeight: '700',
+    letterSpacing: Layout.letterSpacing.wider,
+  },
+  outlineBtn: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: Colors.borderCardStrong,
+    borderRadius: Layout.borderRadius.full,
+    paddingVertical: Layout.spacing.md,
+    alignItems: 'center',
+  },
+  outlineBtnText: {
+    color: Colors.textPrimary,
+    fontSize: Layout.fontSize.sm,
+    fontWeight: '700',
+    letterSpacing: Layout.letterSpacing.wider,
+  },
 });

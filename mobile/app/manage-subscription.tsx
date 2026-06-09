@@ -26,7 +26,7 @@ import { useState } from 'react';
 import { RestaurantMembership } from '@/lib/types';
 
 const SUPPORT_EMAIL = process.env.EXPO_PUBLIC_RESTAURANT_EMAIL ?? '';
-const PLAN_PRICE    = process.env.EXPO_PUBLIC_MEMBERSHIP_PRICE_DISPLAY ?? '£24.00 / month';
+const PLAN_PRICE    = process.env.EXPO_PUBLIC_MEMBERSHIP_PRICE_DISPLAY ?? '£19.99 / month';
 
 type BadgeVariant = 'gold' | 'success' | 'error' | 'warning' | 'neutral';
 

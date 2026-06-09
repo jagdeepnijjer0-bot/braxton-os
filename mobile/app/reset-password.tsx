@@ -3,20 +3,21 @@ import {
   View,
   Text,
   StyleSheet,
+  TextInput,
   ScrollView,
+  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { Layout } from '@/constants/layout';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function ResetPasswordScreen() {
   const { updatePassword, isPasswordRecovery } = useAuth();
+  const insets = useSafeAreaInsets();
   const [password, setPassword]               = useState('');
   const [confirm, setConfirm]                 = useState('');
   const [showPassword, setShowPassword]       = useState(false);
@@ -28,53 +29,53 @@ export default function ResetPasswordScreen() {
   // Guard: only reachable via password recovery deep link
   if (!isPasswordRecovery && !success) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.guardContainer}>
+      <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        <View style={styles.centeredContainer}>
           <Text style={styles.guardIcon}>🔒</Text>
-          <Text style={styles.guardTitle}>Invalid reset link</Text>
+          <Text style={styles.guardTitle}>INVALID RESET LINK</Text>
           <Text style={styles.guardSub}>
-            This link has expired or is invalid. Request a new one from the sign in screen.
+            THIS LINK HAS EXPIRED OR IS INVALID. REQUEST A NEW ONE FROM THE SIGN IN SCREEN.
           </Text>
-          <Button
-            title="Back to Sign In"
+          <TouchableOpacity
+            style={[styles.primaryBtn, { marginTop: Layout.spacing.lg }]}
             onPress={() => router.replace('/(auth)/login')}
-            fullWidth
-            style={{ marginTop: Layout.spacing.lg }}
-          />
+            activeOpacity={0.85}
+          >
+            <Text style={styles.primaryBtnText}>BACK TO SIGN IN</Text>
+          </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   // ── Success screen ─────────────────────────────────────────────────────────
   if (success) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.successContainer}>
-          <Text style={styles.successIcon}>✅</Text>
-          <Text style={styles.brand}>CAFE LOCCO</Text>
-          <Text style={styles.successTitle}>Password updated</Text>
+      <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        <View style={styles.centeredContainer}>
+          <Text style={styles.successIcon}>✓</Text>
+          <Text style={styles.successTitle}>PASSWORD UPDATED</Text>
           <Text style={styles.successSub}>
-            Your password has been changed. Sign in with your new password.
+            YOUR PASSWORD HAS BEEN CHANGED. SIGN IN WITH YOUR NEW PASSWORD.
           </Text>
-          <Button
-            title="Sign In"
+          <TouchableOpacity
+            style={[styles.primaryBtn, { marginTop: Layout.spacing.lg }]}
             onPress={() => router.replace('/(auth)/login')}
-            fullWidth
-            size="lg"
-            style={{ marginTop: Layout.spacing.xl }}
-          />
+            activeOpacity={0.85}
+          >
+            <Text style={styles.primaryBtnText}>SIGN IN</Text>
+          </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   function validate() {
     const e: typeof fieldErrors = {};
-    if (!password) e.password = 'Password is required';
-    else if (password.length < 8) e.password = 'Must be at least 8 characters';
-    if (!confirm) e.confirm = 'Please confirm your password';
-    else if (confirm !== password) e.confirm = 'Passwords do not match';
+    if (!password) e.password = 'PASSWORD IS REQUIRED';
+    else if (password.length < 8) e.password = 'MUST BE AT LEAST 8 CHARACTERS';
+    if (!confirm) e.confirm = 'PLEASE CONFIRM YOUR PASSWORD';
+    else if (confirm !== password) e.confirm = 'PASSWORDS DO NOT MATCH';
     setFieldErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -89,11 +90,11 @@ export default function ResetPasswordScreen() {
     } catch (err: any) {
       const msg: string = err?.message ?? '';
       if (msg.includes('same password')) {
-        setFormError('New password must be different from your current password.');
+        setFormError('NEW PASSWORD MUST BE DIFFERENT FROM YOUR CURRENT PASSWORD.');
       } else if (msg.includes('Network')) {
-        setFormError('Connection error. Check your internet and try again.');
+        setFormError('CONNECTION ERROR. CHECK YOUR INTERNET AND TRY AGAIN.');
       } else {
-        setFormError('Password update failed. Please try again.');
+        setFormError('PASSWORD UPDATE FAILED. PLEASE TRY AGAIN.');
       }
     } finally {
       setLoading(false);
@@ -101,104 +102,250 @@ export default function ResetPasswordScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <View style={styles.header}>
-            <Text style={styles.brand}>CAFE LOCCO</Text>
-            <Text style={styles.title}>New password</Text>
-            <Text style={styles.subtitle}>Choose a strong password for your account.</Text>
-          </View>
+    <View style={[styles.root, { paddingTop: insets.top }]}>
+      <KeyboardAvoidingView
+        style={styles.kav}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerSide}>
+            <Text style={styles.backText}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>RESET PASSWORD</Text>
+          <View style={styles.headerSide} />
+        </View>
 
-          {formError && (
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.subtitle}>CHOOSE A STRONG PASSWORD FOR YOUR ACCOUNT.</Text>
+
+          {formError ? (
             <View style={styles.errorBanner}>
               <Text style={styles.errorBannerText}>{formError}</Text>
             </View>
-          )}
+          ) : null}
 
           <View style={styles.form}>
-            <Input
-              label="New Password"
-              value={password}
-              onChangeText={(t) => { setPassword(t); setFormError(null); }}
-              placeholder="Min. 8 characters"
-              secureTextEntry={!showPassword}
-              error={fieldErrors.password}
-              hint="At least 8 characters"
-              rightIcon={
-                <Text style={styles.showHide}>{showPassword ? 'Hide' : 'Show'}</Text>
-              }
-              onRightIconPress={() => setShowPassword(!showPassword)}
-            />
-            <Input
-              label="Confirm Password"
-              value={confirm}
-              onChangeText={(t) => { setConfirm(t); setFormError(null); }}
-              placeholder="Repeat your password"
-              secureTextEntry={!showPassword}
-              error={fieldErrors.confirm}
-            />
-            <Button
-              title="Update Password"
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>NEW PASSWORD</Text>
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  style={styles.input}
+                  value={password}
+                  onChangeText={(t) => { setPassword(t); setFormError(null); }}
+                  placeholder="MIN. 8 CHARACTERS"
+                  placeholderTextColor={Colors.textMuted}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  returnKeyType="next"
+                />
+                <TouchableOpacity
+                  style={styles.showHideBtn}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <Text style={styles.showHideText}>{showPassword ? 'HIDE' : 'SHOW'}</Text>
+                </TouchableOpacity>
+              </View>
+              {fieldErrors.password ? (
+                <Text style={styles.fieldError}>{fieldErrors.password}</Text>
+              ) : null}
+            </View>
+
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>CONFIRM PASSWORD</Text>
+              <TextInput
+                style={styles.input}
+                value={confirm}
+                onChangeText={(t) => { setConfirm(t); setFormError(null); }}
+                placeholder="REPEAT YOUR PASSWORD"
+                placeholderTextColor={Colors.textMuted}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                returnKeyType="done"
+                onSubmitEditing={handleReset}
+              />
+              {fieldErrors.confirm ? (
+                <Text style={styles.fieldError}>{fieldErrors.confirm}</Text>
+              ) : null}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.primaryBtn, loading && styles.primaryBtnDisabled, { marginTop: Layout.spacing.sm }]}
               onPress={handleReset}
-              loading={loading}
-              fullWidth
-              size="lg"
-              style={{ marginTop: Layout.spacing.sm }}
-            />
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.primaryBtnText}>
+                {loading ? 'UPDATING…' : 'UPDATE PASSWORD'}
+              </Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe:     { flex: 1, backgroundColor: Colors.background },
-  scroll:   { padding: Layout.spacing.lg, gap: Layout.spacing.xl, flexGrow: 1 },
-  header:   { gap: Layout.spacing.sm },
-  brand:    { fontSize: Layout.fontSize.sm, color: Colors.gold, letterSpacing: 3, fontWeight: '700' },
-  title:    { fontSize: Layout.fontSize.xxxl, color: Colors.textPrimary, fontWeight: '800', letterSpacing: -0.5 },
-  subtitle: { fontSize: Layout.fontSize.base, color: Colors.textSecondary, lineHeight: 22 },
+  root: { flex: 1, backgroundColor: Colors.background },
+  kav:  { flex: 1 },
+
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Layout.spacing.lg,
+    height: Layout.headerHeight,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderCard,
+  },
+  headerSide: { width: 44, alignItems: 'flex-start' },
+  backText: {
+    fontSize: 28,
+    color: Colors.textPrimary,
+    lineHeight: 32,
+    marginTop: -2,
+  },
+  headerTitle: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textPrimary,
+    fontWeight: '700',
+    letterSpacing: Layout.letterSpacing.wider,
+  },
+
+  scroll: {
+    padding: Layout.spacing.lg,
+    gap: Layout.spacing.lg,
+  },
+
+  subtitle: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textSecondary,
+    letterSpacing: Layout.letterSpacing.wider,
+    lineHeight: 18,
+  },
 
   errorBanner: {
-    backgroundColor: 'rgba(239,68,68,0.12)',
+    backgroundColor: 'rgba(224,85,85,0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(239,68,68,0.3)',
-    borderRadius: Layout.borderRadius.md,
+    borderColor: 'rgba(224,85,85,0.3)',
+    borderRadius: Layout.borderRadius.card,
     padding: Layout.spacing.md,
   },
   errorBannerText: {
     color: Colors.error,
-    fontSize: Layout.fontSize.sm,
-    lineHeight: 20,
+    fontSize: Layout.fontSize.xs,
+    letterSpacing: Layout.letterSpacing.wider,
+    lineHeight: 18,
   },
 
-  form:     { gap: Layout.spacing.md },
-  showHide: { color: Colors.gold, fontSize: Layout.fontSize.sm, fontWeight: '600' },
+  form: { gap: Layout.spacing.md },
 
-  // Guard screen
-  guardContainer: {
+  fieldGroup: { gap: Layout.spacing.sm },
+
+  label: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textSecondary,
+    fontWeight: '700',
+    letterSpacing: Layout.letterSpacing.wider,
+    paddingHorizontal: Layout.spacing.sm,
+  },
+
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.borderCard,
+    borderRadius: Layout.borderRadius.full,
+  },
+  input: {
+    flex: 1,
+    paddingHorizontal: Layout.spacing.lg,
+    paddingVertical: Layout.spacing.md,
+    fontSize: Layout.fontSize.base,
+    color: Colors.textPrimary,
+  },
+  showHideBtn: {
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical: Layout.spacing.md,
+  },
+  showHideText: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textMuted,
+    fontWeight: '700',
+    letterSpacing: Layout.letterSpacing.wider,
+  },
+
+  fieldError: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.error,
+    letterSpacing: Layout.letterSpacing.wider,
+    paddingHorizontal: Layout.spacing.sm,
+  },
+
+  primaryBtn: {
+    width: '100%',
+    backgroundColor: Colors.white,
+    borderRadius: Layout.borderRadius.full,
+    paddingVertical: Layout.spacing.md,
+    alignItems: 'center',
+  },
+  primaryBtnDisabled: { opacity: 0.6 },
+  primaryBtnText: {
+    color: Colors.background,
+    fontSize: Layout.fontSize.sm,
+    fontWeight: '700',
+    letterSpacing: Layout.letterSpacing.wider,
+  },
+
+  // Guard / centered states
+  centeredContainer: {
     flex: 1,
     padding: Layout.spacing.xl,
     justifyContent: 'center',
     alignItems: 'center',
     gap: Layout.spacing.md,
   },
-  guardIcon:  { fontSize: 48, textAlign: 'center' },
-  guardTitle: { fontSize: Layout.fontSize.xl, color: Colors.textPrimary, fontWeight: '700', textAlign: 'center' },
-  guardSub:   { fontSize: Layout.fontSize.sm, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+  guardIcon: { fontSize: 48, textAlign: 'center' },
+  guardTitle: {
+    fontSize: Layout.fontSize.base,
+    color: Colors.textPrimary,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: Layout.letterSpacing.wider,
+  },
+  guardSub: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    letterSpacing: Layout.letterSpacing.wider,
+  },
 
   // Success screen
-  successContainer: {
-    flex: 1,
-    padding: Layout.spacing.xl,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Layout.spacing.md,
-    backgroundColor: Colors.background,
+  successIcon: {
+    fontSize: 52,
+    color: Colors.success,
+    textAlign: 'center',
+    fontWeight: '300',
   },
-  successIcon:  { fontSize: 52, textAlign: 'center' },
-  successTitle: { fontSize: Layout.fontSize.xxl, color: Colors.textPrimary, fontWeight: '800', textAlign: 'center' },
-  successSub:   { fontSize: Layout.fontSize.base, color: Colors.textSecondary, textAlign: 'center', lineHeight: 24 },
+  successTitle: {
+    fontSize: Layout.fontSize.xl,
+    color: Colors.textPrimary,
+    fontWeight: '800',
+    textAlign: 'center',
+    letterSpacing: Layout.letterSpacing.wider,
+  },
+  successSub: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    letterSpacing: Layout.letterSpacing.wider,
+  },
 });

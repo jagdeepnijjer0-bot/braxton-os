@@ -8,22 +8,18 @@ import {
   RefreshControl,
 } from 'react-native';
 import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { Layout } from '@/constants/layout';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
 import { Reservation } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 
-type BadgeVariant = 'success' | 'warning' | 'error' | 'neutral';
-
-const STATUS_CONFIG: Record<Reservation['status'], { variant: BadgeVariant; label: string }> = {
-  confirmed: { variant: 'success', label: 'Confirmed' },
-  pending:   { variant: 'warning', label: 'Pending'   },
-  cancelled: { variant: 'error',   label: 'Cancelled' },
+const STATUS_CONFIG: Record<Reservation['status'], { color: string; label: string }> = {
+  confirmed: { color: Colors.success, label: 'CONFIRMED' },
+  pending:   { color: Colors.warning, label: 'PENDING'   },
+  cancelled: { color: Colors.error,   label: 'CANCELLED' },
 };
 
 function formatDate(dateStr: string) {
@@ -37,6 +33,7 @@ function formatDate(dateStr: string) {
 
 export default function MyReservationsScreen() {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [refreshing,   setRefreshing]   = useState(false);
@@ -72,34 +69,36 @@ export default function MyReservationsScreen() {
   if (loading) return <LoadingSpinner fullScreen />;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <View style={[styles.root, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backText}>‹ Back</Text>
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerSide}>
+          <Text style={styles.backText}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Reservations</Text>
-        <View style={styles.backBtn} />
+        <Text style={styles.headerTitle}>MY RESERVATIONS</Text>
+        <View style={styles.headerSide} />
       </View>
 
       {error ? (
         <View style={styles.centered}>
-          <Text style={styles.errorIcon}>⚠️</Text>
-          <Text style={styles.errorText}>Couldn't load reservations</Text>
-          <Text style={styles.errorSub}>{error}</Text>
-          <Button title="Try Again" onPress={() => fetchReservations()} fullWidth />
+          <Text style={styles.stateIcon}>⚠</Text>
+          <Text style={styles.stateTitle}>COULDN'T LOAD RESERVATIONS</Text>
+          <Text style={styles.stateSub}>{error}</Text>
+          <TouchableOpacity style={styles.pillBtn} onPress={() => fetchReservations()}>
+            <Text style={styles.pillBtnText}>TRY AGAIN</Text>
+          </TouchableOpacity>
         </View>
       ) : reservations.length === 0 ? (
         <View style={styles.centered}>
-          <Text style={styles.emptyIcon}>📅</Text>
-          <Text style={styles.emptyTitle}>No reservations yet</Text>
-          <Text style={styles.emptySub}>Book a table to see your reservations here.</Text>
-          <Button
-            title="Make a Reservation"
+          <Text style={styles.stateIcon}>◻</Text>
+          <Text style={styles.stateTitle}>NO RESERVATIONS YET</Text>
+          <Text style={styles.stateSub}>BOOK A TABLE TO SEE YOUR RESERVATIONS HERE.</Text>
+          <TouchableOpacity
+            style={[styles.pillBtn, { marginTop: Layout.spacing.md }]}
             onPress={() => router.push('/reservations')}
-            fullWidth
-            style={{ marginTop: Layout.spacing.md }}
-          />
+          >
+            <Text style={styles.pillBtnText}>MAKE A RESERVATION</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
@@ -112,12 +111,12 @@ export default function MyReservationsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => fetchReservations(true)}
-              tintColor={Colors.gold}
+              tintColor={Colors.textMuted}
             />
           }
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -127,37 +126,53 @@ function ReservationCard({ reservation: r }: { reservation: Reservation }) {
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={styles.cardDateBlock}>
-          <Text style={styles.cardDate}>{formatDate(r.date)}</Text>
-          <Text style={styles.cardTime}>{r.time} · {r.guests} {r.guests === 1 ? 'guest' : 'guests'}</Text>
+          <Text style={styles.cardDate}>{formatDate(r.date).toUpperCase()}</Text>
+          <Text style={styles.cardTime}>
+            {r.time} · {r.guests} {r.guests === 1 ? 'GUEST' : 'GUESTS'}
+          </Text>
         </View>
-        <Badge label={statusCfg.label} variant={statusCfg.variant} />
+        <View style={[styles.statusBadge, { borderColor: statusCfg.color }]}>
+          <Text style={[styles.statusText, { color: statusCfg.color }]}>{statusCfg.label}</Text>
+        </View>
       </View>
       {r.notes ? (
         <View style={styles.cardNotes}>
-          <Text style={styles.cardNotesLabel}>Notes</Text>
-          <Text style={styles.cardNotesText}>{r.notes}</Text>
+          <Text style={styles.cardNotesLabel}>NOTES</Text>
+          <Text style={styles.cardNotesText}>{r.notes.toUpperCase()}</Text>
         </View>
       ) : null}
-      <Text style={styles.cardMeta}>Booked {new Date(r.created_at).toLocaleDateString('en-GB')}</Text>
+      <Text style={styles.cardMeta}>
+        BOOKED {new Date(r.created_at).toLocaleDateString('en-GB').toUpperCase()}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
+  root: { flex: 1, backgroundColor: Colors.background },
 
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Layout.spacing.lg,
-    paddingVertical: Layout.spacing.md,
+    height: Layout.headerHeight,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: Colors.borderCard,
   },
-  backBtn:     { width: 70 },
-  backText:    { fontSize: Layout.fontSize.base, color: Colors.gold, fontWeight: '600' },
-  headerTitle: { fontSize: Layout.fontSize.base, color: Colors.textPrimary, fontWeight: '700' },
+  headerSide: { width: 44, alignItems: 'flex-start' },
+  backText: {
+    fontSize: 28,
+    color: Colors.textPrimary,
+    lineHeight: 32,
+    marginTop: -2,
+  },
+  headerTitle: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textPrimary,
+    fontWeight: '700',
+    letterSpacing: Layout.letterSpacing.wider,
+  },
 
   list: {
     padding: Layout.spacing.lg,
@@ -166,11 +181,11 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.borderRadius.lg,
+    backgroundColor: Colors.background,
+    borderRadius: Layout.borderRadius.card,
     borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Layout.spacing.md,
+    borderColor: Colors.borderCard,
+    padding: Layout.spacing.lg,
     gap: Layout.spacing.sm,
   },
 
@@ -180,20 +195,57 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: Layout.spacing.sm,
   },
-  cardDateBlock: { flex: 1, gap: 2 },
-  cardDate:      { fontSize: Layout.fontSize.base, color: Colors.textPrimary, fontWeight: '700' },
-  cardTime:      { fontSize: Layout.fontSize.sm,   color: Colors.textSecondary },
+  cardDateBlock: { flex: 1, gap: 4 },
+  cardDate: {
+    fontSize: Layout.fontSize.base,
+    color: Colors.textPrimary,
+    fontWeight: '700',
+    letterSpacing: Layout.letterSpacing.tight,
+  },
+  cardTime: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textSecondary,
+    letterSpacing: Layout.letterSpacing.wider,
+  },
+
+  statusBadge: {
+    borderWidth: 1,
+    borderRadius: Layout.borderRadius.full,
+    paddingHorizontal: Layout.spacing.sm,
+    paddingVertical: 3,
+  },
+  statusText: {
+    fontSize: Layout.fontSize.xs,
+    fontWeight: '700',
+    letterSpacing: Layout.letterSpacing.wider,
+  },
 
   cardNotes: {
-    backgroundColor: Colors.surfaceElevated,
-    borderRadius: Layout.borderRadius.sm,
+    backgroundColor: Colors.background,
+    borderRadius: Layout.borderRadius.card,
     padding: Layout.spacing.sm,
-    gap: 2,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: Colors.borderCard,
   },
-  cardNotesLabel: { fontSize: Layout.fontSize.xs, color: Colors.textMuted, fontWeight: '600', letterSpacing: 0.5 },
-  cardNotesText:  { fontSize: Layout.fontSize.sm, color: Colors.textSecondary, lineHeight: 18 },
+  cardNotesLabel: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textMuted,
+    fontWeight: '700',
+    letterSpacing: Layout.letterSpacing.wider,
+  },
+  cardNotesText: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+    letterSpacing: Layout.letterSpacing.wider,
+  },
 
-  cardMeta: { fontSize: Layout.fontSize.xs, color: Colors.textMuted },
+  cardMeta: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textMuted,
+    letterSpacing: Layout.letterSpacing.wider,
+  },
 
   // Empty / error states
   centered: {
@@ -203,11 +255,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Layout.spacing.sm,
   },
-  emptyIcon:  { fontSize: 48, textAlign: 'center' },
-  emptyTitle: { fontSize: Layout.fontSize.xl, color: Colors.textPrimary, fontWeight: '700', textAlign: 'center' },
-  emptySub:   { fontSize: Layout.fontSize.sm, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+  stateIcon: { fontSize: 48, textAlign: 'center', color: Colors.textMuted },
+  stateTitle: {
+    fontSize: Layout.fontSize.base,
+    color: Colors.textPrimary,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: Layout.letterSpacing.wider,
+  },
+  stateSub: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    letterSpacing: Layout.letterSpacing.wider,
+  },
 
-  errorIcon: { fontSize: 40, textAlign: 'center' },
-  errorText: { fontSize: Layout.fontSize.base, color: Colors.error, fontWeight: '600', textAlign: 'center' },
-  errorSub:  { fontSize: Layout.fontSize.sm, color: Colors.textMuted, textAlign: 'center' },
+  pillBtn: {
+    backgroundColor: Colors.white,
+    borderRadius: Layout.borderRadius.full,
+    paddingVertical: Layout.spacing.md,
+    paddingHorizontal: Layout.spacing.xl,
+    alignItems: 'center',
+  },
+  pillBtnText: {
+    color: Colors.background,
+    fontSize: Layout.fontSize.sm,
+    fontWeight: '700',
+    letterSpacing: Layout.letterSpacing.wider,
+  },
 });

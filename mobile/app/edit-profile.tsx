@@ -11,14 +11,14 @@ import {
   Platform,
 } from 'react-native';
 import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { Layout } from '@/constants/layout';
-import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function EditProfileScreen() {
   const { profile, updateProfile } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
   const [phone,    setPhone]    = useState(profile?.phone    ?? '');
@@ -42,18 +42,18 @@ export default function EditProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <View style={[styles.root, { paddingTop: insets.top }]}>
       <KeyboardAvoidingView
         style={styles.kav}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Text style={styles.backText}>‹ Back</Text>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerSide}>
+            <Text style={styles.backText}>‹</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Profile</Text>
-          <View style={styles.backBtn} />
+          <Text style={styles.headerTitle}>EDIT PROFILE</Text>
+          <View style={styles.headerSide} />
         </View>
 
         <ScrollView
@@ -62,7 +62,7 @@ export default function EditProfileScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Full Name</Text>
+            <Text style={styles.label}>FULL NAME</Text>
             <TextInput
               style={styles.input}
               value={fullName}
@@ -75,7 +75,7 @@ export default function EditProfileScreen() {
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Phone</Text>
+            <Text style={styles.label}>PHONE</Text>
             <TextInput
               style={styles.input}
               value={phone}
@@ -85,25 +85,25 @@ export default function EditProfileScreen() {
               keyboardType="phone-pad"
               returnKeyType="done"
             />
-            <Text style={styles.hint}>Used for reservation confirmations only.</Text>
+            <Text style={styles.hint}>USED FOR RESERVATION CONFIRMATIONS ONLY.</Text>
           </View>
 
-          <Button
-            title="Save Changes"
+          <TouchableOpacity
+            style={[styles.saveBtn, loading && styles.saveBtnDisabled]}
             onPress={handleSave}
-            loading={loading}
-            fullWidth
-            size="lg"
-            style={{ marginTop: Layout.spacing.md }}
-          />
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.saveBtnText}>{loading ? 'SAVING…' : 'SAVE CHANGES'}</Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
+  root: { flex: 1, backgroundColor: Colors.background },
   kav:  { flex: 1 },
 
   header: {
@@ -111,38 +111,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Layout.spacing.lg,
-    paddingVertical: Layout.spacing.md,
+    height: Layout.headerHeight,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: Colors.borderCard,
   },
-  backBtn: { width: 70 },
-  backText: { fontSize: Layout.fontSize.base, color: Colors.gold, fontWeight: '600' },
+  headerSide: { width: 44, alignItems: 'flex-start' },
+  backText: {
+    fontSize: 28,
+    color: Colors.textPrimary,
+    lineHeight: 32,
+    marginTop: -2,
+  },
   headerTitle: {
-    fontSize: Layout.fontSize.base,
+    fontSize: Layout.fontSize.sm,
     color: Colors.textPrimary,
     fontWeight: '700',
+    letterSpacing: Layout.letterSpacing.wider,
   },
 
   scroll: {
     padding: Layout.spacing.lg,
-    gap: Layout.spacing.md,
+    gap: Layout.spacing.lg,
   },
 
-  fieldGroup: { gap: Layout.spacing.xs },
+  fieldGroup: { gap: Layout.spacing.sm },
 
   label: {
-    fontSize: Layout.fontSize.sm,
+    fontSize: Layout.fontSize.xs,
     color: Colors.textSecondary,
-    fontWeight: '600',
-    letterSpacing: 0.5,
+    fontWeight: '700',
+    letterSpacing: Layout.letterSpacing.wider,
+    paddingHorizontal: Layout.spacing.sm,
   },
 
   input: {
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.background,
     borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Layout.borderRadius.md,
-    paddingHorizontal: Layout.spacing.md,
+    borderColor: Colors.borderCard,
+    borderRadius: Layout.borderRadius.full,
+    paddingHorizontal: Layout.spacing.lg,
     paddingVertical: Layout.spacing.md,
     fontSize: Layout.fontSize.base,
     color: Colors.textPrimary,
@@ -151,6 +158,25 @@ const styles = StyleSheet.create({
   hint: {
     fontSize: Layout.fontSize.xs,
     color: Colors.textMuted,
+    letterSpacing: Layout.letterSpacing.wider,
     lineHeight: 16,
+    paddingHorizontal: Layout.spacing.sm,
+  },
+
+  saveBtn: {
+    backgroundColor: Colors.white,
+    borderRadius: Layout.borderRadius.full,
+    paddingVertical: Layout.spacing.md,
+    alignItems: 'center',
+    marginTop: Layout.spacing.md,
+  },
+  saveBtnDisabled: {
+    opacity: 0.6,
+  },
+  saveBtnText: {
+    color: Colors.background,
+    fontSize: Layout.fontSize.sm,
+    fontWeight: '700',
+    letterSpacing: Layout.letterSpacing.wider,
   },
 });
