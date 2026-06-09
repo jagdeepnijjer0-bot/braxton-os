@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.cafelocco.app",
+      "bundleIdentifier": "com.braxton.restaurant",
       "buildNumber": "1",
       "minimumOsVersion": "15.1",
       "infoPlist": {
@@ -28,7 +28,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0A0A0A"
       },
-      "package": "com.cafelocco.app",
+      "package": "com.braxton.restaurant",
       "versionCode": 1
     },
     "web": {
@@ -49,7 +49,7 @@
       [
         "@stripe/stripe-react-native",
         {
-          "merchantIdentifier": "merchant.com.cafelocco.app",
+          "merchantIdentifier": "merchant.com.braxton.restaurant",
           "enableGooglePay": true
         }
       ]

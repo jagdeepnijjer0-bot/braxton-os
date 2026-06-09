@@ -78,7 +78,7 @@ export default function RootLayout() {
   if (!STRIPE_PUBLISHABLE_KEY) return nav;
 
   return (
-    <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY} merchantIdentifier="merchant.com.cafelocco.app">
+    <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY} merchantIdentifier="merchant.com.braxton.restaurant">
       {nav}
     </StripeProvider>
   );

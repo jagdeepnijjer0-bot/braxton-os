@@ -13,6 +13,13 @@ import { Layout } from '@/constants/layout';
 
 const { height } = Dimensions.get('window');
 
+// Set EXPO_PUBLIC_HERO_IMAGE_URL to your restaurant's photo.
+// Set EXPO_PUBLIC_RESTAURANT_TAGLINE to your tagline (e.g. "FINE DINING · COVENTRY").
+// Set EXPO_PUBLIC_RESTAURANT_SUBTITLE for the hero body copy.
+const HERO_IMAGE   = process.env.EXPO_PUBLIC_HERO_IMAGE_URL     ?? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800';
+const TAGLINE      = process.env.EXPO_PUBLIC_RESTAURANT_TAGLINE ?? '';
+const SUBTITLE     = process.env.EXPO_PUBLIC_RESTAURANT_SUBTITLE ?? "Where every dish tells a story and\nevery moment becomes a memory.";
+
 interface HeroSectionProps {
   onReserve: () => void;
   onMenu: () => void;
@@ -22,7 +29,7 @@ export function HeroSection({ onReserve, onMenu }: HeroSectionProps) {
   return (
     <View style={styles.container}>
       <ImageBackground
-        source={{ uri: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800' }}
+        source={{ uri: HERO_IMAGE }}
         style={styles.image}
         resizeMode="cover"
       >
@@ -32,11 +39,9 @@ export function HeroSection({ onReserve, onMenu }: HeroSectionProps) {
           style={styles.gradient}
         >
           <View style={styles.content}>
-            <Text style={styles.tagline}>FINE DINING EXPERIENCE</Text>
+            {TAGLINE ? <Text style={styles.tagline}>{TAGLINE}</Text> : null}
             <Text style={styles.title}>Cafe Locco</Text>
-            <Text style={styles.subtitle}>
-              Where every dish tells a story and{'\n'}every moment becomes a memory.
-            </Text>
+            <Text style={styles.subtitle}>{SUBTITLE}</Text>
             <View style={styles.actions}>
               <TouchableOpacity style={styles.primaryBtn} onPress={onReserve} activeOpacity={0.85}>
                 <Text style={styles.primaryBtnText}>Reserve a Table</Text>
