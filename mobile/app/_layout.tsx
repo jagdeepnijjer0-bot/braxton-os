@@ -18,26 +18,21 @@ function parseHashParams(url: string): Record<string, string> {
 async function handleDeepLink(url: string | null) {
   if (!url) return;
 
-  // ── Password reset (cafelocco://reset-password#access_token=...&type=recovery) ──
   const params = parseHashParams(url);
   if (params.type === 'recovery' && params.access_token && params.refresh_token) {
     await supabase.auth.setSession({
-      access_token:  params.access_token,
+      access_token: params.access_token,
       refresh_token: params.refresh_token,
     });
     router.replace('/reset-password');
     return;
   }
 
-  // ── Subscription success (cold-start from Stripe redirect) ─────────────────
-  // Normal flow: openAuthSessionAsync in membership.tsx handles this inline.
-  // This covers the rare case where the app was not running when Stripe redirected.
   if (url.includes('subscription-success')) {
     router.replace('/subscription-success');
     return;
   }
 
-  // ── Subscription cancelled (user closed Stripe Checkout on cold start) ──────
   if (url.includes('subscription-cancel')) {
     router.replace('/subscription-cancel');
     return;
@@ -58,23 +53,27 @@ export default function RootLayout() {
       <StatusBar style="light" backgroundColor={Colors.background} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.background } }}>
         <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="index" />
+        <Stack.Screen name="menu"                  options={{ presentation: 'card' }} />
+        <Stack.Screen name="gallery"               options={{ presentation: 'card' }} />
+        <Stack.Screen name="account"               options={{ presentation: 'card' }} />
         <Stack.Screen name="about"                 options={{ presentation: 'card' }} />
         <Stack.Screen name="reservations"          options={{ presentation: 'card' }} />
         <Stack.Screen name="membership"            options={{ presentation: 'modal' }} />
+        <Stack.Screen name="my-membership"         options={{ presentation: 'card' }} />
         <Stack.Screen name="coffee-claim"          options={{ presentation: 'modal' }} />
         <Stack.Screen name="contact"               options={{ presentation: 'card' }} />
+        <Stack.Screen name="social-media"          options={{ presentation: 'card' }} />
         <Stack.Screen name="manage-subscription"   options={{ presentation: 'modal' }} />
         <Stack.Screen name="reset-password"        options={{ presentation: 'modal' }} />
         <Stack.Screen name="subscription-success"  options={{ presentation: 'modal' }} />
         <Stack.Screen name="subscription-cancel"   options={{ presentation: 'modal' }} />
-        <Stack.Screen name="edit-profile"          options={{ presentation: 'card'  }} />
-        <Stack.Screen name="my-reservations"       options={{ presentation: 'card'  }} />
+        <Stack.Screen name="edit-profile"          options={{ presentation: 'card' }} />
+        <Stack.Screen name="my-reservations"       options={{ presentation: 'card' }} />
       </Stack>
     </>
   );
 
-  // StripeProvider native module crashes if publishableKey is empty string
   if (!STRIPE_PUBLISHABLE_KEY) return nav;
 
   return (

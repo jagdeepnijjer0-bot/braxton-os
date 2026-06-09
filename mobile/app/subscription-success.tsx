@@ -60,7 +60,7 @@ export default function SubscriptionSuccessScreen() {
           </Text>
           <Button
             title="Go to Account"
-            onPress={() => router.replace('/(tabs)/account')}
+            onPress={() => router.replace('/account')}
             fullWidth
             size="lg"
             style={{ marginTop: Layout.spacing.lg }}
@@ -111,7 +111,7 @@ export default function SubscriptionSuccessScreen() {
 
           <Button
             title="Explore Your Benefits"
-            onPress={() => router.replace('/(tabs)/account')}
+            onPress={() => router.replace('/account')}
             fullWidth
             size="lg"
             style={{ marginTop: Layout.spacing.lg }}

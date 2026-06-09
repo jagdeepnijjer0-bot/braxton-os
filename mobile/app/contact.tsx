@@ -9,38 +9,33 @@ import {
   Platform,
   Alert,
   Linking,
+  TextInput,
 } from 'react-native';
 import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/colors';
 import { Layout } from '@/constants/layout';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { ScreenHeader } from '@/components/navigation/ScreenHeader';
+import { NavigationDrawer } from '@/components/navigation/NavigationDrawer';
 import { supabase } from '@/lib/supabase';
 import { ContactMessageInput } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 
-// ── Contact details from env — set these in your .env file ───────────────────
-const PHONE     = process.env.EXPO_PUBLIC_RESTAURANT_PHONE     ?? '';
-const WHATSAPP  = process.env.EXPO_PUBLIC_RESTAURANT_WHATSAPP  ?? '';
-const EMAIL     = process.env.EXPO_PUBLIC_RESTAURANT_EMAIL     ?? '';
-const ADDRESS   = process.env.EXPO_PUBLIC_RESTAURANT_ADDRESS   ?? '';
-const INSTAGRAM = process.env.EXPO_PUBLIC_RESTAURANT_INSTAGRAM ?? '';
-const TIKTOK    = process.env.EXPO_PUBLIC_RESTAURANT_TIKTOK    ?? '';
-const FACEBOOK  = process.env.EXPO_PUBLIC_RESTAURANT_FACEBOOK  ?? '';
+const EMAIL   = process.env.EXPO_PUBLIC_RESTAURANT_EMAIL ?? 'info@cafelocco.co.uk';
+const PHONE   = process.env.EXPO_PUBLIC_RESTAURANT_PHONE ?? '';
+const WHATSAPP  = process.env.EXPO_PUBLIC_RESTAURANT_WHATSAPP ?? '';
 
-const BLANK_FORM: ContactMessageInput = { name: '', email: '', phone: '', message: '' };
+const BLANK: ContactMessageInput = { name: '', email: '', phone: '', message: '' };
 
 export default function ContactScreen() {
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const { user, profile } = useAuth();
 
-  const [form, setForm] = useState<ContactMessageInput>(BLANK_FORM);
+  const [form, setForm] = useState<ContactMessageInput>(BLANK);
   const [errors, setErrors] = useState<Partial<ContactMessageInput>>({});
   const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState<ContactMessageInput | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [success, setSuccess] = useState(false);
 
-  // Fix: pre-fill from profile/auth once they load (both are async)
   useEffect(() => {
     if (profile || user) {
       setForm((f) => ({
@@ -58,10 +53,10 @@ export default function ContactScreen() {
 
   function validate(): boolean {
     const e: typeof errors = {};
-    if (!form.name.trim())    e.name    = 'Name is required';
-    if (!form.email.trim())   e.email   = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = 'Enter a valid email address';
-    if (!form.message.trim()) e.message = 'Message is required';
+    if (!form.name.trim())    e.name    = 'FIRST NAME IS REQUIRED';
+    if (!form.email.trim())   e.email   = 'EMAIL IS REQUIRED';
+    else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = 'PLEASE ENTER A VALID EMAIL';
+    if (!form.message.trim()) e.message = 'MESSAGE IS REQUIRED';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -77,313 +72,312 @@ export default function ContactScreen() {
         message: form.message.trim(),
       });
       if (error) throw error;
-      setSubmitted({ ...form });
+      setSuccess(true);
     } catch (err: any) {
-      Alert.alert('Send Failed', err.message ?? 'Please try again or call us directly.');
+      Alert.alert('SEND FAILED', err.message ?? 'Please try again or contact us directly.');
     } finally {
       setLoading(false);
     }
   }
 
-  function handleSendAnother() {
-    setSubmitted(null);
-    setForm({
-      ...BLANK_FORM,
-      name:  profile?.full_name || user?.email?.split('@')[0] || '',
-      email: user?.email        || '',
-    });
-    setErrors({});
-  }
-
   async function openURL(url: string) {
-    try {
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        await Linking.openURL(url);
-      } else {
-        Alert.alert('Cannot open link', `No app found to handle: ${url}`);
-      }
-    } catch {
-      Alert.alert('Error', 'Could not open the link. Please try again.');
-    }
+    const ok = await Linking.canOpenURL(url);
+    if (ok) Linking.openURL(url);
   }
 
-  function openWhatsApp() {
-    const number = WHATSAPP.replace(/[^\d]/g, '');
-    const text   = encodeURIComponent('Hello, I have an enquiry.');
-    openURL(`https://wa.me/${number}?text=${text}`);
-  }
-
-  // ── Success screen ─────────────────────────────────────────────────────────
-  if (submitted) {
-    const preview = submitted.message.length > 80
-      ? submitted.message.slice(0, 80).trimEnd() + '…'
-      : submitted.message;
-
+  // Success state
+  if (success) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <ScrollView contentContainerStyle={styles.successScroll} showsVerticalScrollIndicator={false}>
-          <LinearGradient colors={['#0A0A1F', Colors.background]} style={styles.successHero}>
-            <Text style={styles.successEmoji}>✉️</Text>
-            <Text style={styles.successTitle}>Message Received</Text>
-            <Text style={styles.successSubtitle}>
-              We'll get back to you within 24 hours.
-            </Text>
-          </LinearGradient>
-
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryHeader}>
-              <Text style={styles.summaryBrand}>CAFE LOCCO</Text>
-              <Text style={styles.summaryLabel}>Message Summary</Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <SummaryRow icon="👤" label="Name"    value={submitted.name} />
-            <SummaryRow icon="✉️" label="Email"   value={submitted.email} />
-            {submitted.phone?.trim() ? (
-              <SummaryRow icon="📞" label="Phone"  value={submitted.phone} />
-            ) : null}
-            <SummaryRow icon="💬" label="Message" value={preview} />
-            <View style={styles.replyPill}>
-              <Text style={styles.replyDot}>●</Text>
-              <Text style={styles.replyText}>Reply within 24 hours</Text>
-            </View>
+      <View style={styles.container}>
+        <ScreenHeader title="CONTACT US" onMenuPress={() => setDrawerOpen(true)} />
+        <View style={styles.successContainer}>
+          <View style={styles.successCard}>
+            <Text style={styles.successTitle}>MESSAGE SENT SUCCESSFULLY</Text>
+            <Text style={styles.successSub}>WE'LL BE IN TOUCH WITHIN 24 HOURS.</Text>
           </View>
-
-          <View style={styles.successActions}>
-            <Button
-              title="Back to Home"
-              onPress={() => router.replace('/(tabs)')}
-              fullWidth
-              size="lg"
-            />
-            <Button
-              title="Send Another Message"
-              onPress={handleSendAnother}
-              variant="outline"
-              fullWidth
-            />
-          </View>
-        </ScrollView>
-      </SafeAreaView>
+          <TouchableOpacity style={styles.btnPrimary} onPress={() => router.replace('/')} activeOpacity={0.85}>
+            <Text style={styles.btnPrimaryText}>BACK TO HOME</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.btnOutline}
+            onPress={() => { setSuccess(false); setForm({ ...BLANK, name: profile?.full_name || '', email: user?.email || '' }); }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.btnOutlineText}>SEND ANOTHER MESSAGE</Text>
+          </TouchableOpacity>
+        </View>
+        <NavigationDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      </View>
     );
   }
 
-  // ── Contact form ───────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-      >
+    <View style={styles.container}>
+      <ScreenHeader title="CONTACT US" onMenuPress={() => setDrawerOpen(true)} />
+
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
         >
-          <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8 }}>
-            <Text style={styles.backText}>← Back</Text>
-          </TouchableOpacity>
-
-          <View style={styles.pageHeader}>
-            <Text style={styles.tagline}>CAFE LOCCO</Text>
-            <Text style={styles.title}>Get in Touch</Text>
-            <Text style={styles.subtitle}>We'd love to hear from you</Text>
-          </View>
-
-          {/* ── Quick-contact row — only renders buttons for configured channels ── */}
-          <View style={styles.quickRow}>
-            {PHONE     ? <QuickBtn emoji="📞" label="Call"      onPress={() => openURL(`tel:${PHONE}`)} /> : null}
-            {WHATSAPP  ? <QuickBtn emoji="💬" label="WhatsApp"  onPress={openWhatsApp} /> : null}
-            {EMAIL     ? <QuickBtn emoji="📧" label="Email"     onPress={() => openURL(`mailto:${EMAIL}`)} /> : null}
-            {INSTAGRAM ? <QuickBtn emoji="📸" label="Instagram" onPress={() => openURL(INSTAGRAM)} /> : null}
-            {TIKTOK    ? <QuickBtn emoji="🎵" label="TikTok"    onPress={() => openURL(TIKTOK)} /> : null}
-            {FACEBOOK  ? <QuickBtn emoji="👥" label="Facebook"  onPress={() => openURL(FACEBOOK)} /> : null}
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* ── Message form ── */}
-          <Text style={styles.formTitle}>Send a Message</Text>
-
-          <View style={styles.form}>
-            <Input
-              label="Full Name"
+          {/* Form card */}
+          <View style={styles.formCard}>
+            <FormField
               value={form.name}
-              onChangeText={(v) => setField('name', v)}
-              placeholder="Your full name"
-              autoComplete="name"
+              onChangeText={(t) => setField('name', t)}
+              placeholder="FIRST NAME"
               error={errors.name}
             />
-            <Input
-              label="Email"
+            <FormField
               value={form.email}
-              onChangeText={(v) => setField('email', v)}
-              placeholder="your@email.com"
+              onChangeText={(t) => setField('email', t)}
+              placeholder="EMAIL ADDRESS"
               keyboardType="email-address"
               autoCapitalize="none"
-              autoComplete="email"
               error={errors.email}
             />
-            <Input
-              label="Phone (optional)"
+            <FormField
               value={form.phone ?? ''}
-              onChangeText={(v) => setField('phone', v)}
-              placeholder="+44 7000 000000"
+              onChangeText={(t) => setField('phone', t)}
+              placeholder="CONTACT NUMBER"
               keyboardType="phone-pad"
-              autoComplete="tel"
             />
-            <Input
-              label="Message"
+            <TextInput
+              style={styles.textarea}
               value={form.message}
-              onChangeText={(v) => setField('message', v)}
-              placeholder="How can we help you?"
+              onChangeText={(t) => setField('message', t)}
+              placeholder="MESSAGE"
+              placeholderTextColor={Colors.textMuted}
               multiline
-              numberOfLines={5}
-              style={styles.messageInput}
-              error={errors.message}
+              numberOfLines={6}
+              textAlignVertical="top"
+              selectionColor={Colors.white}
             />
-            <Button
-              title="Send Message"
+            {errors.message && <Text style={styles.fieldError}>{errors.message}</Text>}
+
+            <TouchableOpacity
+              style={[styles.sendBtn, loading && styles.sendBtnDisabled]}
               onPress={handleSend}
-              loading={loading}
-              fullWidth
-              size="lg"
-            />
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.sendBtnText}>{loading ? 'SENDING...' : 'SEND MESSAGE'}</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* ── Address card ── */}
-          {(ADDRESS || PHONE || EMAIL) ? (
-            <View style={styles.addressCard}>
-              <Text style={styles.addressTitle}>Find Us</Text>
-              {ADDRESS ? <Text style={styles.addressLine}>📍 {ADDRESS}</Text> : null}
-              {PHONE   ? <Text style={styles.addressLine}>📞 {PHONE}</Text>   : null}
-              {EMAIL   ? <Text style={styles.addressLine}>✉️ {EMAIL}</Text>   : null}
+          {/* Email card */}
+          <View style={styles.emailCard}>
+            <Text style={styles.emailLabel}>EMAIL US AT</Text>
+            <TouchableOpacity onPress={() => openURL(`mailto:${EMAIL}`)} activeOpacity={0.7}>
+              <Text style={styles.emailAddress}>{EMAIL.toUpperCase()}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Phone quick links */}
+          {(PHONE || WHATSAPP) && (
+            <View style={styles.quickRow}>
+              {PHONE    ? <QuickLink label="CALL US"    onPress={() => openURL(`tel:${PHONE}`)} /> : null}
+              {WHATSAPP ? <QuickLink label="WHATSAPP" onPress={() => openURL(`https://wa.me/${WHATSAPP.replace(/[^\d]/g, '')}?text=${encodeURIComponent('Hello, I have an enquiry.')}`)} /> : null}
             </View>
-          ) : null}
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
-}
 
-function QuickBtn({ emoji, label, onPress }: { emoji: string; label: string; onPress: () => void }) {
-  return (
-    <TouchableOpacity style={styles.quickBtn} onPress={onPress} activeOpacity={0.7}>
-      <Text style={styles.quickEmoji}>{emoji}</Text>
-      <Text style={styles.quickLabel}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
-function SummaryRow({ icon, label, value }: { icon: string; label: string; value: string }) {
-  return (
-    <View style={styles.summaryRow}>
-      <Text style={styles.summaryIcon}>{icon}</Text>
-      <View style={styles.summaryRowContent}>
-        <Text style={styles.summaryRowLabel}>{label}</Text>
-        <Text style={styles.summaryRowValue}>{value}</Text>
-      </View>
+      <NavigationDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
+function FormField({
+  value, onChangeText, placeholder, keyboardType, autoCapitalize, error,
+}: {
+  value: string;
+  onChangeText: (t: string) => void;
+  placeholder: string;
+  keyboardType?: any;
+  autoCapitalize?: any;
+  error?: string;
+}) {
+  return (
+    <View>
+      <TextInput
+        style={[styles.input, error && styles.inputError]}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={Colors.textMuted}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize ?? 'words'}
+        selectionColor={Colors.white}
+      />
+      {error && <Text style={styles.fieldError}>{error}</Text>}
+    </View>
+  );
+}
 
-  // Form layout
+function QuickLink({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={styles.quickLink} onPress={onPress} activeOpacity={0.7}>
+      <Text style={styles.quickLinkText}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.background },
   scroll: {
     padding: Layout.spacing.lg,
-    gap: Layout.spacing.lg,
+    gap: Layout.spacing.md,
     paddingBottom: Layout.spacing.xxxl,
   },
-  backText: { color: Colors.textSecondary, fontSize: Layout.fontSize.sm },
-  pageHeader: { gap: 4 },
-  tagline:  { fontSize: Layout.fontSize.xs, color: Colors.gold, letterSpacing: 2, fontWeight: '600' },
-  title:    { fontSize: Layout.fontSize.xxl, color: Colors.textPrimary, fontWeight: '800', letterSpacing: -0.5 },
-  subtitle: { fontSize: Layout.fontSize.sm, color: Colors.textSecondary },
 
-  // Quick-contact row
-  quickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Layout.spacing.sm },
-  quickBtn: {
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.borderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingVertical: Layout.spacing.sm,
-    paddingHorizontal: 10,
-    minWidth: 58,
-  },
-  quickEmoji: { fontSize: 20 },
-  quickLabel: { fontSize: 10, color: Colors.textSecondary, fontWeight: '500' },
-
-  divider: { height: 1, backgroundColor: Colors.border },
-
-  formTitle: { fontSize: Layout.fontSize.xl, color: Colors.textPrimary, fontWeight: '700' },
-  form: { gap: Layout.spacing.md },
-  messageInput: { minHeight: 120, textAlignVertical: 'top' },
-
-  addressCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.borderRadius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Layout.spacing.md,
+  // Form card
+  formCard: {
+    borderWidth: 2,
+    borderColor: Colors.borderCard,
+    borderRadius: Layout.borderRadius.card,
+    padding: Layout.spacing.lg,
     gap: Layout.spacing.sm,
   },
-  addressTitle: { fontSize: Layout.fontSize.base, color: Colors.textPrimary, fontWeight: '700' },
-  addressLine:  { fontSize: Layout.fontSize.sm, color: Colors.textSecondary, lineHeight: 20 },
-
-  // Success screen
-  successScroll: { paddingBottom: Layout.spacing.xxxl },
-  successHero: {
+  input: {
     paddingHorizontal: Layout.spacing.lg,
-    paddingTop: 60,
-    paddingBottom: Layout.spacing.xxl,
-    alignItems: 'center',
-    gap: Layout.spacing.sm,
+    paddingVertical: 16,
+    borderRadius: Layout.borderRadius.full,
+    borderWidth: 1,
+    borderColor: Colors.borderCard,
+    backgroundColor: Colors.background,
+    color: Colors.textPrimary,
+    fontSize: Layout.fontSize.xs,
+    letterSpacing: Layout.letterSpacing.tight,
   },
-  successEmoji:    { fontSize: 56 },
-  successTitle:    { fontSize: Layout.fontSize.xxl, color: Colors.textPrimary, fontWeight: '800', textAlign: 'center' },
-  successSubtitle: { fontSize: Layout.fontSize.base, color: Colors.textSecondary, textAlign: 'center', lineHeight: 24 },
-
-  summaryCard: {
-    margin: Layout.spacing.lg,
-    backgroundColor: Colors.surface,
+  textarea: {
+    paddingHorizontal: Layout.spacing.lg,
+    paddingVertical: 14,
     borderRadius: Layout.borderRadius.xl,
     borderWidth: 1,
-    borderColor: 'rgba(201,168,76,0.25)',
-    overflow: 'hidden',
+    borderColor: Colors.borderCard,
+    backgroundColor: Colors.background,
+    color: Colors.textPrimary,
+    fontSize: Layout.fontSize.xs,
+    letterSpacing: Layout.letterSpacing.tight,
+    minHeight: 120,
   },
-  summaryHeader: {
-    padding: Layout.spacing.md,
-    backgroundColor: 'rgba(201,168,76,0.08)',
+  inputError: { borderColor: Colors.error },
+  fieldError: {
+    fontSize: 9,
+    color: Colors.error,
+    letterSpacing: Layout.letterSpacing.tight,
+    marginLeft: Layout.spacing.lg,
+    marginTop: 4,
+  },
+  sendBtn: {
+    paddingVertical: 16,
+    borderRadius: Layout.borderRadius.full,
+    borderWidth: 1,
+    borderColor: Colors.borderCardStrong,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  sendBtnDisabled: { opacity: 0.6 },
+  sendBtnText: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textPrimary,
+    letterSpacing: Layout.letterSpacing.wider,
+    fontWeight: '600',
+  },
+
+  // Email card
+  emailCard: {
+    borderWidth: 2,
+    borderColor: Colors.borderCard,
+    borderRadius: Layout.borderRadius.card,
+    padding: Layout.spacing.xl,
+    alignItems: 'center',
+    gap: 8,
+  },
+  emailLabel: {
+    fontSize: 9,
+    color: Colors.textMuted,
+    letterSpacing: Layout.letterSpacing.wider,
+  },
+  emailAddress: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textPrimary,
+    letterSpacing: Layout.letterSpacing.tight,
+    fontWeight: '600',
+  },
+
+  // Quick links
+  quickRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: Layout.spacing.sm,
+  },
+  quickLink: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: Layout.borderRadius.full,
+    borderWidth: 1,
+    borderColor: Colors.borderCard,
     alignItems: 'center',
   },
-  summaryBrand: { fontSize: Layout.fontSize.sm, color: Colors.gold, fontWeight: '800', letterSpacing: 2 },
-  summaryLabel: { fontSize: Layout.fontSize.xs, color: Colors.textMuted, fontWeight: '500' },
-  summaryDivider: { height: 1, backgroundColor: Colors.border },
-
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingHorizontal: Layout.spacing.md,
-    paddingVertical: Layout.spacing.sm,
-    gap: Layout.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderSubtle,
+  quickLinkText: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textSecondary,
+    letterSpacing: Layout.letterSpacing.wider,
   },
-  summaryIcon:       { fontSize: 16, width: 20, textAlign: 'center', marginTop: 1 },
-  summaryRowContent: { flex: 1 },
-  summaryRowLabel:   { fontSize: Layout.fontSize.xs, color: Colors.textMuted, fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.5 },
-  summaryRowValue:   { fontSize: Layout.fontSize.base, color: Colors.textPrimary, fontWeight: '600', marginTop: 1 },
 
-  replyPill: { flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.xs, padding: Layout.spacing.md },
-  replyDot:  { fontSize: 10, color: Colors.info },
-  replyText: { fontSize: Layout.fontSize.xs, color: Colors.info, fontWeight: '600' },
-
-  successActions: { paddingHorizontal: Layout.spacing.lg, gap: Layout.spacing.sm },
+  // Success
+  successContainer: {
+    flex: 1,
+    padding: Layout.spacing.lg,
+    gap: Layout.spacing.md,
+    justifyContent: 'center',
+  },
+  successCard: {
+    borderWidth: 2,
+    borderColor: Colors.white,
+    borderRadius: Layout.borderRadius.card,
+    padding: Layout.spacing.xl,
+    alignItems: 'center',
+    gap: 12,
+  },
+  successTitle: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textPrimary,
+    letterSpacing: Layout.letterSpacing.wider,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  successSub: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textMuted,
+    letterSpacing: Layout.letterSpacing.tight,
+    textAlign: 'center',
+  },
+  btnPrimary: {
+    paddingVertical: 18,
+    borderRadius: Layout.borderRadius.full,
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+  },
+  btnPrimaryText: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.background,
+    letterSpacing: Layout.letterSpacing.wider,
+    fontWeight: '700',
+  },
+  btnOutline: {
+    paddingVertical: 18,
+    borderRadius: Layout.borderRadius.full,
+    borderWidth: 1,
+    borderColor: Colors.borderCard,
+    alignItems: 'center',
+  },
+  btnOutlineText: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textPrimary,
+    letterSpacing: Layout.letterSpacing.wider,
+    fontWeight: '600',
+  },
 });

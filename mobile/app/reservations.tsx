@@ -8,26 +8,24 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Linking,
+  TextInput,
 } from 'react-native';
 import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/colors';
 import { Layout } from '@/constants/layout';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { ScreenHeader } from '@/components/navigation/ScreenHeader';
+import { NavigationDrawer } from '@/components/navigation/NavigationDrawer';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { ReservationInput } from '@/lib/types';
 import { format, addDays, isValid, parseISO, isBefore, startOfToday } from 'date-fns';
 
 const TIME_SLOTS = [
-  '12:00', '12:30', '13:00', '13:30',
-  '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00',
+  '9:00', '9:30', '10:00', '10:30', '11:00', '11:30',
+  '12:00', '12:30', '13:00', '13:30', '14:00',
+  '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30',
 ];
 
-const GUEST_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8];
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 const INITIAL_FORM: ReservationInput = {
@@ -41,6 +39,7 @@ const INITIAL_FORM: ReservationInput = {
 };
 
 export default function ReservationsScreen() {
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const { user, profile } = useAuth();
 
   const [form, setForm] = useState<ReservationInput>(INITIAL_FORM);
@@ -48,14 +47,13 @@ export default function ReservationsScreen() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState<ReservationInput | null>(null);
 
-  // Fix: pre-fill form when profile loads (it's async)
   useEffect(() => {
     if (profile || user) {
       setForm((f) => ({
         ...f,
-        name: f.name || profile?.full_name || '',
-        email: f.email || user?.email || '',
-        phone: f.phone || profile?.phone || '',
+        name:  f.name  || profile?.full_name || '',
+        email: f.email || user?.email        || '',
+        phone: f.phone || profile?.phone     || '',
       }));
     }
   }, [profile, user]);
@@ -67,35 +65,17 @@ export default function ReservationsScreen() {
 
   function validate(): boolean {
     const e: typeof errors = {};
-
-    if (!form.name.trim())
-      e.name = 'Full name is required';
-
-    if (!form.email.trim())
-      e.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(form.email))
-      e.email = 'Enter a valid email address';
-
-    if (!form.phone.trim())
-      e.phone = 'Phone number is required';
-    else if (form.phone.trim().length < 7)
-      e.phone = 'Enter a valid phone number';
-
-    if (!form.date)
-      e.date = 'Date is required';
-    else if (!DATE_REGEX.test(form.date))
-      e.date = 'Use format YYYY-MM-DD (e.g. 2026-06-15)';
-    else if (!isValid(parseISO(form.date)))
-      e.date = 'That is not a valid date';
-    else if (isBefore(parseISO(form.date), startOfToday()))
-      e.date = 'Date must be today or in the future';
-
-    if (!form.time)
-      e.time = 'Please select a time slot';
-
-    if (!form.guests || form.guests < 1 || form.guests > 20)
-      e.guests = 'Guest count must be between 1 and 20';
-
+    if (!form.name.trim())   e.name  = 'FULL NAME IS REQUIRED';
+    if (!form.email.trim())  e.email = 'EMAIL IS REQUIRED';
+    else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = 'ENTER A VALID EMAIL ADDRESS';
+    if (!form.phone.trim())  e.phone = 'PHONE NUMBER IS REQUIRED';
+    else if (form.phone.trim().length < 7) e.phone = 'ENTER A VALID PHONE NUMBER';
+    if (!form.date)          e.date  = 'DATE IS REQUIRED';
+    else if (!DATE_REGEX.test(form.date)) e.date = 'USE FORMAT YYYY-MM-DD';
+    else if (!isValid(parseISO(form.date))) e.date = 'THAT IS NOT A VALID DATE';
+    else if (isBefore(parseISO(form.date), startOfToday())) e.date = 'DATE MUST BE TODAY OR LATER';
+    if (!form.time)          e.time  = 'PLEASE SELECT A TIME SLOT';
+    if (!form.guests || form.guests < 1 || form.guests > 20) e.guests = '1–20 GUESTS REQUIRED';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -106,19 +86,19 @@ export default function ReservationsScreen() {
     try {
       const { error } = await supabase.from('reservations').insert({
         user_id: user?.id ?? null,
-        name: form.name.trim(),
-        email: form.email.trim(),
-        phone: form.phone.trim(),
-        date: form.date,
-        time: form.time,
+        name:   form.name.trim(),
+        email:  form.email.trim(),
+        phone:  form.phone.trim(),
+        date:   form.date,
+        time:   form.time,
         guests: form.guests,
-        notes: form.notes?.trim() || null,
+        notes:  form.notes?.trim() || null,
         status: 'pending',
       });
       if (error) throw error;
       setSubmitted({ ...form });
     } catch (err: any) {
-      Alert.alert('Reservation Failed', err.message ?? 'Please try again or call us directly.');
+      Alert.alert('RESERVATION FAILED', err.message ?? 'Please try again or call us directly.');
     } finally {
       setLoading(false);
     }
@@ -128,9 +108,9 @@ export default function ReservationsScreen() {
     setSubmitted(null);
     setForm({
       ...INITIAL_FORM,
-      name: profile?.full_name || user?.email?.split('@')[0] || '',
-      email: user?.email || '',
-      phone: profile?.phone || '',
+      name:  profile?.full_name || user?.email?.split('@')[0] || '',
+      email: user?.email        || '',
+      phone: profile?.phone     || '',
     });
     setErrors({});
   }
@@ -138,373 +118,439 @@ export default function ReservationsScreen() {
   // ── Success screen ───────────────────────────────────────────────────────────
   if (submitted) {
     const displayDate = isValid(parseISO(submitted.date))
-      ? format(parseISO(submitted.date), 'EEEE, MMMM d, yyyy')
+      ? format(parseISO(submitted.date), 'EEEE, MMMM d, yyyy').toUpperCase()
       : submitted.date;
 
     return (
-      <SafeAreaView style={styles.safe}>
-        <ScrollView contentContainerStyle={styles.successScroll} showsVerticalScrollIndicator={false}>
-          <LinearGradient colors={['#0A1F0A', Colors.background]} style={styles.successHero}>
-            <Text style={styles.successEmoji}>🎉</Text>
-            <Text style={styles.successTitle}>You're on the list!</Text>
-            <Text style={styles.successSubtitle}>
-              We'll confirm your reservation within 2 hours.
-            </Text>
-          </LinearGradient>
+      <View style={styles.container}>
+        <ScreenHeader title="RESERVATIONS" onMenuPress={() => setDrawerOpen(true)} />
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <View style={styles.successCard}>
+            <Text style={styles.successTitle}>RESERVATION REQUESTED</Text>
+            <Text style={styles.successSub}>WE'LL CONFIRM BY EMAIL WITHIN 2 HOURS.</Text>
+          </View>
 
           <View style={styles.bookingCard}>
-            <View style={styles.bookingCardHeader}>
-              <Text style={styles.bookingCardBrand}>CAFE LOCCO</Text>
-              <Text style={styles.bookingCardLabel}>Reservation Request</Text>
+            <View style={styles.bookingRow}>
+              <Text style={styles.bookingLabel}>DATE</Text>
+              <Text style={styles.bookingValue}>{displayDate}</Text>
             </View>
             <View style={styles.bookingDivider} />
-            <BookingRow icon="👤" label="Name"   value={submitted.name} />
-            <BookingRow icon="📅" label="Date"   value={displayDate} />
-            <BookingRow icon="🕐" label="Time"   value={submitted.time} />
-            <BookingRow icon="👥" label="Guests" value={`${submitted.guests} ${submitted.guests === 1 ? 'guest' : 'guests'}`} />
-            <BookingRow icon="✉️" label="Email"  value={submitted.email} />
-            {submitted.notes?.trim() ? (
-              <BookingRow icon="📝" label="Notes" value={submitted.notes} />
-            ) : null}
-            <View style={styles.statusPill}>
-              <Text style={styles.statusDot}>●</Text>
-              <Text style={styles.statusText}>Pending confirmation</Text>
+            <View style={styles.bookingRow}>
+              <Text style={styles.bookingLabel}>TIME</Text>
+              <Text style={styles.bookingValue}>{submitted.time}</Text>
+            </View>
+            <View style={styles.bookingDivider} />
+            <View style={styles.bookingRow}>
+              <Text style={styles.bookingLabel}>GUESTS</Text>
+              <Text style={styles.bookingValue}>{submitted.guests} {submitted.guests === 1 ? 'GUEST' : 'GUESTS'}</Text>
+            </View>
+            <View style={styles.bookingDivider} />
+            <View style={styles.bookingRow}>
+              <Text style={styles.bookingLabel}>STATUS</Text>
+              <View style={styles.statusBadge}>
+                <View style={styles.statusDot} />
+                <Text style={styles.statusText}>PENDING</Text>
+              </View>
             </View>
           </View>
 
-          <View style={styles.successActions}>
-            <Button
-              title="Back to Home"
-              onPress={() => router.replace('/(tabs)')}
-              fullWidth
-              size="lg"
-            />
-            <Button
-              title="Make Another Reservation"
-              onPress={handleNewReservation}
-              variant="outline"
-              fullWidth
-            />
-          </View>
+          <TouchableOpacity style={styles.btnPrimary} onPress={() => router.replace('/')} activeOpacity={0.85}>
+            <Text style={styles.btnPrimaryText}>BACK TO HOME</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.btnOutline} onPress={handleNewReservation} activeOpacity={0.8}>
+            <Text style={styles.btnOutlineText}>MAKE ANOTHER RESERVATION</Text>
+          </TouchableOpacity>
         </ScrollView>
-      </SafeAreaView>
+        <NavigationDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      </View>
     );
   }
 
   // ── Form ─────────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-      >
+    <View style={styles.container}>
+      <ScreenHeader title="RESERVATIONS" onMenuPress={() => setDrawerOpen(true)} />
+
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.pageHeader}>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8 }}>
-              <Text style={styles.backText}>← Back</Text>
-            </TouchableOpacity>
-            <Text style={styles.tagline}>CAFE LOCCO</Text>
-            <Text style={styles.title}>Reserve a Table</Text>
-            <Text style={styles.subtitle}>We look forward to welcoming you</Text>
-          </View>
-
-          <View style={styles.form}>
-            {/* ── Contact details ── */}
-            <Input
-              label="Full Name"
-              value={form.name}
-              onChangeText={(v) => setField('name', v)}
-              placeholder="Your full name"
-              autoComplete="name"
-              error={errors.name}
-            />
-            <Input
-              label="Email"
-              value={form.email}
-              onChangeText={(v) => setField('email', v)}
-              placeholder="your@email.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              error={errors.email}
-            />
-            <Input
-              label="Phone"
-              value={form.phone}
-              onChangeText={(v) => setField('phone', v)}
-              placeholder="+44 7000 000000"
-              keyboardType="phone-pad"
-              autoComplete="tel"
-              error={errors.phone}
-            />
-
-            {/* ── Date ── */}
-            <Input
-              label="Date"
+          {/* Date card */}
+          <SectionCard label="SELECT DATE" error={errors.date}>
+            <TextInput
+              style={[styles.input, errors.date && styles.inputError]}
               value={form.date}
               onChangeText={(v) => setField('date', v)}
               placeholder="YYYY-MM-DD"
-              hint="e.g. 2026-06-20 — must be today or later"
-              error={errors.date}
+              placeholderTextColor={Colors.textMuted}
+              selectionColor={Colors.white}
             />
+          </SectionCard>
 
-            {/* ── Time slots ── */}
-            <View>
-              <Text style={styles.fieldLabel}>TIME SLOT</Text>
-              {errors.time && <Text style={styles.fieldError}>{errors.time}</Text>}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.slotsScroll}
-              >
-                <View style={styles.slots}>
-                  {TIME_SLOTS.map((slot) => {
-                    const active = form.time === slot;
-                    return (
-                      <TouchableOpacity
-                        key={slot}
-                        style={[styles.slot, active && styles.slotActive]}
-                        onPress={() => setField('time', slot)}
-                        activeOpacity={0.75}
-                      >
-                        <Text style={[styles.slotText, active && styles.slotTextActive]}>
-                          {slot}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </ScrollView>
-            </View>
-
-            {/* ── Guest count ── */}
-            <View>
-              <Text style={styles.fieldLabel}>GUESTS</Text>
-              {errors.guests && <Text style={styles.fieldError}>{errors.guests}</Text>}
-              <View style={styles.guestGrid}>
-                {GUEST_OPTIONS.map((n) => {
-                  const active = form.guests === n;
+          {/* Time card */}
+          <SectionCard label="SELECT TIME" error={errors.time}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.slotsScroll}>
+              <View style={styles.slots}>
+                {TIME_SLOTS.map((slot) => {
+                  const active = form.time === slot;
                   return (
                     <TouchableOpacity
-                      key={n}
-                      style={[styles.guestBtn, active && styles.guestBtnActive]}
-                      onPress={() => setField('guests', n)}
+                      key={slot}
+                      style={[styles.slot, active && styles.slotActive]}
+                      onPress={() => setField('time', slot)}
                       activeOpacity={0.75}
                     >
-                      <Text style={[styles.guestBtnText, active && styles.guestBtnTextActive]}>
-                        {n}
-                      </Text>
+                      <Text style={[styles.slotText, active && styles.slotTextActive]}>{slot}</Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
+            </ScrollView>
+          </SectionCard>
+
+          {/* Guests card */}
+          <SectionCard label="NUMBER OF GUESTS" error={errors.guests}>
+            <View style={styles.guestCounter}>
               <TouchableOpacity
-                style={styles.largePartyBtn}
-                onPress={() => router.push('/contact')}
-                activeOpacity={0.75}
+                style={styles.counterBtn}
+                onPress={() => setField('guests', Math.max(1, form.guests - 1))}
+                activeOpacity={0.7}
               >
-                <Text style={styles.largePartyText}>
-                  Party of 9 or more? <Text style={styles.largePartyLink}>Contact us directly →</Text>
-                </Text>
+                <Text style={styles.counterBtnText}>−</Text>
+              </TouchableOpacity>
+              <Text style={styles.guestCount}>{form.guests}</Text>
+              <TouchableOpacity
+                style={styles.counterBtn}
+                onPress={() => setField('guests', Math.min(10, form.guests + 1))}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.counterBtnText}>+</Text>
               </TouchableOpacity>
             </View>
+            <TouchableOpacity onPress={() => router.push('/contact')} activeOpacity={0.7}>
+              <Text style={styles.largePartyText}>
+                PARTY OF 10+? CONTACT US DIRECTLY →
+              </Text>
+            </TouchableOpacity>
+          </SectionCard>
 
-            {/* ── Notes ── */}
-            <Input
-              label="Special Requests (optional)"
+          {/* Contact details card */}
+          <SectionCard label="YOUR DETAILS">
+            <PillInput
+              value={form.name}
+              onChangeText={(v) => setField('name', v)}
+              placeholder="FULL NAME"
+              autoComplete="name"
+              error={errors.name}
+            />
+            <PillInput
+              value={form.email}
+              onChangeText={(v) => setField('email', v)}
+              placeholder="EMAIL ADDRESS"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              error={errors.email}
+            />
+            <PillInput
+              value={form.phone}
+              onChangeText={(v) => setField('phone', v)}
+              placeholder="PHONE NUMBER"
+              keyboardType="phone-pad"
+              error={errors.phone}
+            />
+          </SectionCard>
+
+          {/* Special requests card */}
+          <SectionCard label="SPECIAL REQUESTS (OPTIONAL)">
+            <TextInput
+              style={styles.textarea}
               value={form.notes ?? ''}
               onChangeText={(v) => setField('notes', v)}
-              placeholder="Allergies, celebrations, seating preferences..."
+              placeholder="ALLERGIES · CELEBRATIONS · SEATING PREFERENCES"
+              placeholderTextColor={Colors.textMuted}
               multiline
-              numberOfLines={3}
-              style={styles.notesInput}
+              numberOfLines={4}
+              textAlignVertical="top"
+              selectionColor={Colors.white}
             />
+          </SectionCard>
 
-            <Button
-              title="Request Reservation"
-              onPress={handleSubmit}
-              loading={loading}
-              fullWidth
-              size="lg"
-            />
-
-            <Text style={styles.note}>
-              Reservations are subject to availability. We'll confirm by email within 2 hours.
+          {/* CTA */}
+          <TouchableOpacity
+            style={[styles.btnPrimary, loading && styles.btnDisabled]}
+            onPress={handleSubmit}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.btnPrimaryText}>
+              {loading ? 'REQUESTING...' : 'CONFIRM RESERVATION'}
             </Text>
-          </View>
+          </TouchableOpacity>
+
+          <Text style={styles.note}>
+            RESERVATIONS ARE SUBJECT TO AVAILABILITY. WE'LL CONFIRM BY EMAIL WITHIN 2 HOURS.
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+
+      <NavigationDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
+    </View>
   );
 }
 
-function BookingRow({ icon, label, value }: { icon: string; label: string; value: string }) {
+function SectionCard({
+  label, children, error,
+}: {
+  label: string;
+  children: React.ReactNode;
+  error?: string;
+}) {
   return (
-    <View style={styles.bookingRow}>
-      <Text style={styles.bookingIcon}>{icon}</Text>
-      <View style={styles.bookingRowContent}>
-        <Text style={styles.bookingLabel}>{label}</Text>
-        <Text style={styles.bookingValue}>{value}</Text>
-      </View>
+    <View style={styles.sectionCard}>
+      <Text style={styles.sectionLabel}>{label}</Text>
+      {error && <Text style={styles.sectionError}>{error}</Text>}
+      {children}
+    </View>
+  );
+}
+
+function PillInput({
+  value, onChangeText, placeholder, keyboardType, autoCapitalize, autoComplete, error,
+}: {
+  value: string;
+  onChangeText: (t: string) => void;
+  placeholder: string;
+  keyboardType?: any;
+  autoCapitalize?: any;
+  autoComplete?: any;
+  error?: string;
+}) {
+  return (
+    <View>
+      <TextInput
+        style={[styles.input, error && styles.inputError]}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={Colors.textMuted}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize ?? 'words'}
+        autoComplete={autoComplete}
+        selectionColor={Colors.white}
+      />
+      {error && <Text style={styles.fieldError}>{error}</Text>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
-
-  // ── Form ──
+  container: { flex: 1, backgroundColor: Colors.background },
   scroll: {
     padding: Layout.spacing.lg,
-    gap: Layout.spacing.lg,
+    gap: Layout.spacing.md,
     paddingBottom: Layout.spacing.xxxl,
   },
-  pageHeader: { gap: 4 },
-  backText: { color: Colors.textSecondary, fontSize: Layout.fontSize.sm, marginBottom: Layout.spacing.sm },
-  tagline: { fontSize: Layout.fontSize.xs, color: Colors.gold, letterSpacing: 2, fontWeight: '700' },
-  title: { fontSize: Layout.fontSize.xxl, color: Colors.textPrimary, fontWeight: '800', letterSpacing: -0.5 },
-  subtitle: { fontSize: Layout.fontSize.sm, color: Colors.textSecondary },
 
-  form: { gap: Layout.spacing.md },
-  fieldLabel: {
+  // Section cards
+  sectionCard: {
+    borderWidth: 2,
+    borderColor: Colors.borderCard,
+    borderRadius: Layout.borderRadius.card,
+    padding: Layout.spacing.lg,
+    gap: Layout.spacing.sm,
+  },
+  sectionLabel: {
     fontSize: Layout.fontSize.xs,
-    color: Colors.textSecondary,
+    color: Colors.textPrimary,
+    letterSpacing: Layout.letterSpacing.wider,
     fontWeight: '600',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 6,
+    marginBottom: 4,
   },
-  fieldError: {
-    fontSize: Layout.fontSize.xs,
+  sectionError: {
+    fontSize: 9,
     color: Colors.error,
-    marginBottom: 6,
+    letterSpacing: Layout.letterSpacing.tight,
   },
 
-  slotsScroll: { marginHorizontal: -Layout.spacing.lg },
-  slots: { flexDirection: 'row', gap: Layout.spacing.sm, paddingHorizontal: Layout.spacing.lg },
+  // Pill inputs
+  input: {
+    paddingHorizontal: Layout.spacing.lg,
+    paddingVertical: 16,
+    borderRadius: Layout.borderRadius.full,
+    borderWidth: 1,
+    borderColor: Colors.borderCard,
+    backgroundColor: Colors.background,
+    color: Colors.textPrimary,
+    fontSize: Layout.fontSize.xs,
+    letterSpacing: Layout.letterSpacing.tight,
+  },
+  inputError: { borderColor: Colors.error },
+  fieldError: {
+    fontSize: 9,
+    color: Colors.error,
+    letterSpacing: Layout.letterSpacing.tight,
+    marginTop: 4,
+    marginLeft: Layout.spacing.lg,
+  },
+
+  textarea: {
+    paddingHorizontal: Layout.spacing.lg,
+    paddingVertical: 14,
+    borderRadius: Layout.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: Colors.borderCard,
+    backgroundColor: Colors.background,
+    color: Colors.textPrimary,
+    fontSize: Layout.fontSize.xs,
+    letterSpacing: Layout.letterSpacing.tight,
+    minHeight: 100,
+  },
+
+  // Time slots
+  slotsScroll: { marginHorizontal: -4 },
+  slots: { flexDirection: 'row', gap: 8, paddingHorizontal: 4, paddingVertical: 4 },
   slot: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: Layout.borderRadius.full,
-    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.borderCard,
   },
-  slotActive: { backgroundColor: Colors.gold, borderColor: Colors.gold },
-  slotText: { fontSize: Layout.fontSize.sm, color: Colors.textSecondary, fontWeight: '500' },
+  slotActive: { backgroundColor: Colors.white, borderColor: Colors.white },
+  slotText: { fontSize: Layout.fontSize.xs, color: Colors.textSecondary, fontWeight: '500', letterSpacing: 0.5 },
   slotTextActive: { color: Colors.background, fontWeight: '700' },
 
-  guestGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Layout.spacing.sm },
-  guestBtn: {
-    width: 52,
-    height: 52,
-    borderRadius: Layout.borderRadius.md,
-    backgroundColor: Colors.surface,
+  // Guest counter
+  guestCounter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Layout.spacing.xl,
+    paddingVertical: 8,
+  },
+  counterBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.borderCardStrong,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  guestBtnActive: { backgroundColor: Colors.gold, borderColor: Colors.gold },
-  guestBtnText: { fontSize: Layout.fontSize.base, color: Colors.textSecondary, fontWeight: '600' },
-  guestBtnTextActive: { color: Colors.background, fontWeight: '800' },
-
-  largePartyBtn: { marginTop: Layout.spacing.sm },
-  largePartyText: { fontSize: Layout.fontSize.xs, color: Colors.textMuted },
-  largePartyLink: { color: Colors.gold, fontWeight: '600' },
-
-  notesInput: { minHeight: 80, textAlignVertical: 'top' },
-  note: { fontSize: Layout.fontSize.xs, color: Colors.textMuted, textAlign: 'center', lineHeight: 18 },
-
-  // ── Success ──
-  successScroll: { paddingBottom: Layout.spacing.xxxl },
-  successHero: {
-    paddingHorizontal: Layout.spacing.lg,
-    paddingTop: 60,
-    paddingBottom: Layout.spacing.xxl,
-    alignItems: 'center',
-    gap: Layout.spacing.sm,
+  counterBtnText: {
+    fontSize: 22,
+    color: Colors.textPrimary,
+    lineHeight: 26,
+    fontWeight: '300',
   },
-  successEmoji: { fontSize: 56 },
-  successTitle: {
+  guestCount: {
     fontSize: Layout.fontSize.xxl,
     color: Colors.textPrimary,
-    fontWeight: '800',
+    fontWeight: '300',
+    minWidth: 40,
     textAlign: 'center',
   },
-  successSubtitle: {
-    fontSize: Layout.fontSize.base,
-    color: Colors.textSecondary,
+  largePartyText: {
+    fontSize: 9,
+    color: Colors.textMuted,
+    letterSpacing: Layout.letterSpacing.tight,
     textAlign: 'center',
-    lineHeight: 24,
+    marginTop: 4,
   },
 
-  bookingCard: {
-    margin: Layout.spacing.lg,
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.borderRadius.xl,
+  // Buttons
+  btnPrimary: {
+    paddingVertical: 18,
+    borderRadius: Layout.borderRadius.full,
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+  },
+  btnPrimaryText: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.background,
+    letterSpacing: Layout.letterSpacing.wider,
+    fontWeight: '700',
+  },
+  btnOutline: {
+    paddingVertical: 18,
+    borderRadius: Layout.borderRadius.full,
     borderWidth: 1,
-    borderColor: 'rgba(201,168,76,0.25)',
+    borderColor: Colors.borderCard,
+    alignItems: 'center',
+  },
+  btnOutlineText: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textPrimary,
+    letterSpacing: Layout.letterSpacing.wider,
+    fontWeight: '600',
+  },
+  btnDisabled: { opacity: 0.6 },
+  note: {
+    fontSize: 9,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    letterSpacing: Layout.letterSpacing.tight,
+    lineHeight: 14,
+  },
+
+  // Success
+  successCard: {
+    borderWidth: 2,
+    borderColor: Colors.white,
+    borderRadius: Layout.borderRadius.card,
+    padding: Layout.spacing.xl,
+    alignItems: 'center',
+    gap: 12,
+  },
+  successTitle: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textPrimary,
+    letterSpacing: Layout.letterSpacing.wider,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  successSub: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textMuted,
+    letterSpacing: Layout.letterSpacing.tight,
+    textAlign: 'center',
+  },
+  bookingCard: {
+    borderWidth: 1,
+    borderColor: Colors.borderCard,
+    borderRadius: Layout.borderRadius.card,
     overflow: 'hidden',
   },
-  bookingCardHeader: {
-    padding: Layout.spacing.md,
-    backgroundColor: 'rgba(201,168,76,0.08)',
+  bookingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: Layout.spacing.lg,
+    paddingVertical: 14,
   },
-  bookingCardBrand: {
-    fontSize: Layout.fontSize.sm,
-    color: Colors.gold,
-    fontWeight: '800',
-    letterSpacing: 2,
-  },
-  bookingCardLabel: {
-    fontSize: Layout.fontSize.xs,
-    color: Colors.textMuted,
-    fontWeight: '500',
-  },
-  bookingDivider: { height: 1, backgroundColor: Colors.border },
-  bookingRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingHorizontal: Layout.spacing.md,
-    paddingVertical: Layout.spacing.sm,
-    gap: Layout.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderSubtle,
-  },
-  bookingIcon: { fontSize: 16, width: 20, textAlign: 'center', marginTop: 1 },
-  bookingRowContent: { flex: 1 },
   bookingLabel: {
     fontSize: Layout.fontSize.xs,
     color: Colors.textMuted,
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: Layout.letterSpacing.wider,
   },
   bookingValue: {
-    fontSize: Layout.fontSize.base,
+    fontSize: Layout.fontSize.xs,
     color: Colors.textPrimary,
+    letterSpacing: Layout.letterSpacing.tight,
     fontWeight: '600',
-    marginTop: 1,
+    flex: 1,
+    textAlign: 'right',
   },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Layout.spacing.xs,
-    padding: Layout.spacing.md,
-  },
-  statusDot: { fontSize: 10, color: Colors.warning },
-  statusText: { fontSize: Layout.fontSize.xs, color: Colors.warning, fontWeight: '600' },
-
-  successActions: {
-    paddingHorizontal: Layout.spacing.lg,
-    gap: Layout.spacing.sm,
+  bookingDivider: { height: 1, backgroundColor: Colors.borderCard },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.warning },
+  statusText: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.warning,
+    letterSpacing: Layout.letterSpacing.wider,
+    fontWeight: '600',
   },
 });

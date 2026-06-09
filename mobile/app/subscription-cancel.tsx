@@ -24,7 +24,7 @@ export default function SubscriptionCancelScreen() {
         />
         <Button
           title="Continue Browsing"
-          onPress={() => router.replace('/(tabs)/account')}
+          onPress={() => router.replace('/account')}
           variant="outline"
           fullWidth
         />

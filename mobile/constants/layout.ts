@@ -21,13 +21,14 @@ export const Layout = {
     md: 12,
     lg: 18,
     xl: 24,
+    card: 32,
     full: 999,
   },
 
   fontSize: {
-    xs: 11,
-    sm: 13,
-    md: 15,
+    xs: 10,
+    sm: 12,
+    md: 14,
     base: 16,
     lg: 18,
     xl: 22,
@@ -36,6 +37,13 @@ export const Layout = {
     hero: 48,
   },
 
-  tabBarHeight: 80,
-  headerHeight: 56,
+  letterSpacing: {
+    tight: 0.03,
+    normal: 0.08,
+    wide: 0.12,
+    wider: 0.16,
+  },
+
+  headerHeight: 64,
+  drawerWidth: 0.85,
 } as const;

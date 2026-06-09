@@ -8,68 +8,66 @@ import {
   Alert,
 } from 'react-native';
 import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import { Colors } from '@/constants/colors';
 import { Layout } from '@/constants/layout';
-import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/hooks/useAuth';
 import { useMembership } from '@/hooks/useMembership';
 import { createCheckoutSession } from '@/lib/stripe';
 
-const PLAN_PRICE = process.env.EXPO_PUBLIC_MEMBERSHIP_PRICE_DISPLAY ?? '£24.00 / month';
-const PRICE_ID   = process.env.EXPO_PUBLIC_STRIPE_PREMIUM_PRICE_ID  ?? '';
+const PRICE_DISPLAY = process.env.EXPO_PUBLIC_MEMBERSHIP_PRICE_DISPLAY ?? '£19.99 / month';
+const PRICE_ID      = process.env.EXPO_PUBLIC_STRIPE_PREMIUM_PRICE_ID  ?? '';
 
-const PERKS = [
-  { icon: '☕', title: 'Monthly Free Coffee',    desc: 'One complimentary coffee every month' },
-  { icon: '📅', title: 'Priority Reservations',  desc: 'Skip the queue — reserve up to 60 days ahead' },
-  { icon: '🥂', title: 'Welcome Drink',           desc: 'Complimentary aperitif on every visit' },
-  { icon: '🎂', title: 'Birthday Surprise',       desc: 'A special gift on your birthday month' },
-  { icon: '✦',  title: 'Member Events',           desc: "Exclusive access to chef's table evenings" },
-  { icon: '🛍️', title: '10% Off Takeaway',        desc: 'Discount on all takeaway orders' },
+const BENEFITS = [
+  { icon: '☕', label: 'FREE MONTHLY COFFEE', desc: 'ONE COMPLIMENTARY COFFEE EVERY MONTH' },
+  { icon: '📅', label: 'PRIORITY RESERVATIONS', desc: 'RESERVE UP TO 60 DAYS IN ADVANCE' },
+  { icon: '♛', label: 'EXCLUSIVE MEMBER PERKS', desc: 'VIP ACCESS · EVENTS · BIRTHDAY SURPRISE' },
 ];
 
 export default function MembershipScreen() {
+  const insets = useSafeAreaInsets();
   const { user, isAuthenticated } = useAuth();
   const { membership, isPremium, isCancelledPending, loading } = useMembership(user?.id);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   if (loading) return <LoadingSpinner fullScreen />;
 
-  // ── Already premium and NOT scheduled for cancellation ────────────────────
+  // Already premium (not cancelling)
   if (isPremium && !isCancelledPending) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <TouchableOpacity style={styles.closeBtn} onPress={() => router.back()} activeOpacity={0.7}>
+          <Text style={styles.closeBtnText}>✕</Text>
+        </TouchableOpacity>
         <View style={styles.alreadyContainer}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-            <Text style={styles.closeText}>✕</Text>
-          </TouchableOpacity>
-          <Text style={styles.crownIcon}>♛</Text>
-          <Text style={styles.alreadyTitle}>You're already Premium!</Text>
-          <Text style={styles.alreadyText}>
-            Enjoy all your exclusive benefits. Thank you for being a valued member.
+          <Text style={styles.alreadyTitle}>YOU'RE ALREADY A MEMBER</Text>
+          <Text style={styles.alreadySub}>
+            THANK YOU FOR BEING PART OF CAFÉ LOCCO.
           </Text>
-          <Button
-            title="Manage Subscription"
-            onPress={() => router.push('/manage-subscription')}
-            fullWidth
-            variant="outline"
-          />
-          <Button title="Close" onPress={() => router.back()} fullWidth />
+          <TouchableOpacity
+            style={styles.btnOutline}
+            onPress={() => router.replace('/my-membership')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.btnOutlineText}>VIEW MY MEMBERSHIP</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.btnGhost} onPress={() => router.back()} activeOpacity={0.7}>
+            <Text style={styles.btnGhostText}>CLOSE</Text>
+          </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   async function handleSubscribe() {
     if (!isAuthenticated) {
-      router.push('/(auth)/login');
+      router.push('/(auth)/signup');
       return;
     }
     if (!PRICE_ID) {
-      Alert.alert('Configuration Error', 'Subscription is not available right now. Please contact us.');
+      Alert.alert('Not Available', 'Subscription is not available right now. Please contact us.');
       return;
     }
     setCheckoutLoading(true);
@@ -77,15 +75,10 @@ export default function MembershipScreen() {
       const result = await createCheckoutSession(PRICE_ID);
       if (!result?.url) throw new Error('No checkout URL returned.');
 
-      // Open Stripe Checkout in the in-app browser.
-      // openAuthSessionAsync closes automatically when Stripe redirects to cafelocco://
       const webResult = await WebBrowser.openAuthSessionAsync(result.url, 'cafelocco://');
-
       if (webResult.type === 'success') {
-        // Stripe redirected back — subscription is being processed by the webhook
         router.replace('/subscription-success');
       }
-      // type === 'cancel' or 'dismiss' means the user closed the browser — stay on this screen
     } catch (err: any) {
       const msg: string = err?.message ?? '';
       if (msg.includes('already have an active')) {
@@ -99,82 +92,91 @@ export default function MembershipScreen() {
     }
   }
 
-  // ── Subscription page ──────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        <LinearGradient colors={['#1A1200', '#0A0A0A']} style={styles.hero}>
-          <SafeAreaView edges={['top']}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-              <Text style={styles.closeText}>✕</Text>
-            </TouchableOpacity>
-          </SafeAreaView>
-          <View style={styles.heroContent}>
-            <Text style={styles.crownHero}>♛</Text>
-            <Text style={styles.heroTagline}>CAFE LOCCO PREMIUM</Text>
-            <Text style={styles.heroTitle}>The Finest{'\n'}Dining Experience</Text>
-            <Text style={styles.heroSubtitle}>
-              Join our exclusive membership and unlock a world of privileges.
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top }]}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()} activeOpacity={0.7}>
+            <Text style={styles.iconBtnText}>✕</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>MEMBERSHIP</Text>
+          <View style={styles.iconBtn} />
+        </View>
+        <View style={styles.headerBorder} />
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+      >
+        {/* Headline */}
+        <View style={styles.headline}>
+          <Text style={styles.headlineTitle}>PREMIUM{'\n'}SUBSCRIPTION</Text>
+          <Text style={styles.headlineSub}>YOUR DAILY COFFEE PERFECTED.</Text>
+        </View>
+
+        {/* Price card */}
+        <View style={styles.priceCard}>
+          <Text style={styles.priceAmount}>£19.99</Text>
+          <Text style={styles.pricePeriod}>PER MONTH</Text>
+          <Text style={styles.priceNote}>CANCEL ANYTIME · NO COMMITMENT</Text>
+        </View>
+
+        {/* Cancellation-pending notice */}
+        {isCancelledPending && membership?.cancel_at && (
+          <View style={styles.noticeBanner}>
+            <Text style={styles.noticeText}>
+              YOUR SUBSCRIPTION CANCELS ON{' '}
+              {new Date(membership.cancel_at)
+                .toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+                .toUpperCase()}
+              . RESUBSCRIBE BELOW TO KEEP YOUR BENEFITS.
             </Text>
           </View>
-        </LinearGradient>
+        )}
 
-        <View style={styles.content}>
-          {/* Cancellation-pending notice */}
-          {isCancelledPending && membership?.cancel_at && (
-            <View style={styles.cancelPendingBanner}>
-              <Text style={styles.cancelPendingIcon}>ℹ️</Text>
-              <Text style={styles.cancelPendingText}>
-                Your subscription is scheduled to cancel on{' '}
-                {new Date(membership.cancel_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}.
-                You can resubscribe below or keep your access from the portal.
-              </Text>
-            </View>
-          )}
-
-          <View style={styles.pricingCard}>
-            <View style={styles.pricingHeader}>
-              <Text style={styles.planName}>Premium Membership</Text>
-              <Text style={styles.price}>{PLAN_PRICE}</Text>
-              <Text style={styles.pricingNote}>Cancel anytime — no commitment</Text>
+        {/* Benefits */}
+        {BENEFITS.map((b) => (
+          <View key={b.label} style={styles.benefitCard}>
+            <Text style={styles.benefitIcon}>{b.icon}</Text>
+            <View style={styles.benefitContent}>
+              <Text style={styles.benefitLabel}>{b.label}</Text>
+              <Text style={styles.benefitDesc}>{b.desc}</Text>
             </View>
           </View>
+        ))}
 
-          <Text style={styles.perksTitle}>What's included</Text>
-          <View style={styles.perks}>
-            {PERKS.map((perk) => (
-              <View key={perk.title} style={styles.perkRow}>
-                <View style={styles.perkIcon}>
-                  <Text style={styles.perkEmoji}>{perk.icon}</Text>
-                </View>
-                <View style={styles.perkContent}>
-                  <Text style={styles.perkTitle}>{perk.title}</Text>
-                  <Text style={styles.perkDesc}>{perk.desc}</Text>
-                </View>
-                <Text style={styles.perkCheck}>✓</Text>
-              </View>
-            ))}
-          </View>
-
-          <Button
-            title={
-              isAuthenticated
-                ? isCancelledPending
-                  ? `Reactivate — ${PLAN_PRICE}`
-                  : `Start Premium — ${PLAN_PRICE}`
-                : 'Sign In to Subscribe'
-            }
-            onPress={handleSubscribe}
-            loading={checkoutLoading}
-            fullWidth
-            size="lg"
-          />
-
-          <Text style={styles.legal}>
-            Billed monthly. Cancel anytime through the app or Stripe Customer Portal.
-            By subscribing you agree to our Terms of Service.
+        {/* Primary CTA */}
+        <TouchableOpacity
+          style={[styles.btnPrimary, checkoutLoading && styles.btnDisabled]}
+          onPress={handleSubscribe}
+          disabled={checkoutLoading}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.btnPrimaryText}>
+            {checkoutLoading
+              ? 'LOADING...'
+              : isAuthenticated
+              ? isCancelledPending
+                ? 'REACTIVATE MEMBERSHIP'
+                : 'SIGN UP & SUBSCRIBE'
+              : 'SIGN UP & SUBSCRIBE'}
           </Text>
-        </View>
+        </TouchableOpacity>
+
+        {/* Secondary CTA */}
+        <TouchableOpacity
+          style={styles.btnOutline}
+          onPress={() => router.push('/(auth)/login')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.btnOutlineText}>ALREADY A MEMBER? LOG IN</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.legal}>
+          BILLED MONTHLY. CANCEL ANYTIME THROUGH THE APP OR STRIPE PORTAL.
+        </Text>
       </ScrollView>
     </View>
   );
@@ -182,100 +184,205 @@ export default function MembershipScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  safe:      { flex: 1, backgroundColor: Colors.background },
-  scroll:    { paddingBottom: Layout.spacing.xxxl },
-  hero:      { paddingBottom: Layout.spacing.xxl },
 
-  heroContent: {
+  // Header
+  header: { backgroundColor: Colors.background },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: Layout.spacing.lg,
-    gap: Layout.spacing.sm,
-    marginTop: Layout.spacing.sm,
+    paddingVertical: 16,
   },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: Layout.spacing.md,
+  headerTitle: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textPrimary,
+    letterSpacing: Layout.letterSpacing.wider,
+    fontWeight: '600',
   },
-  closeText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
-
-  crownHero:    { fontSize: 40, textAlign: 'center', marginBottom: Layout.spacing.sm },
-  heroTagline:  { fontSize: Layout.fontSize.xs, color: Colors.gold, letterSpacing: 3, fontWeight: '700', textAlign: 'center' },
-  heroTitle:    { fontSize: Layout.fontSize.xxxl, color: Colors.white, fontWeight: '800', textAlign: 'center', letterSpacing: -0.5, lineHeight: 42 },
-  heroSubtitle: { fontSize: Layout.fontSize.base, color: Colors.textSecondary, textAlign: 'center', lineHeight: 24 },
-
-  content: { padding: Layout.spacing.lg, gap: Layout.spacing.lg },
-
-  cancelPendingBanner: {
-    flexDirection: 'row',
-    gap: Layout.spacing.sm,
-    padding: Layout.spacing.md,
-    borderRadius: Layout.borderRadius.lg,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'flex-start',
-  },
-  cancelPendingIcon: { fontSize: 16 },
-  cancelPendingText: { flex: 1, fontSize: Layout.fontSize.xs, color: Colors.textSecondary, lineHeight: 18 },
-
-  pricingCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.borderRadius.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(201,168,76,0.3)',
-    overflow: 'hidden',
-  },
-  pricingHeader: {
-    padding: Layout.spacing.xl,
-    alignItems: 'center',
-    gap: Layout.spacing.xs,
-  },
-  planName:    { fontSize: Layout.fontSize.sm, color: Colors.gold, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase' },
-  price:       { fontSize: Layout.fontSize.xxl, color: Colors.textPrimary, fontWeight: '800' },
-  pricingNote: { fontSize: Layout.fontSize.xs, color: Colors.textMuted },
-
-  perksTitle: { fontSize: Layout.fontSize.xl, color: Colors.textPrimary, fontWeight: '700' },
-  perks: {
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.borderRadius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: 'hidden',
-  },
-  perkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Layout.spacing.md,
-    gap: Layout.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderSubtle,
-  },
-  perkIcon: {
+  headerBorder: { height: 1, backgroundColor: Colors.borderCard },
+  iconBtn: {
     width: 40,
     height: 40,
-    borderRadius: Layout.borderRadius.md,
-    backgroundColor: 'rgba(201,168,76,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.borderCard,
+    borderRadius: 4,
   },
-  perkEmoji:   { fontSize: 18 },
-  perkContent: { flex: 1, gap: 2 },
-  perkTitle:   { fontSize: Layout.fontSize.sm, color: Colors.textPrimary, fontWeight: '600' },
-  perkDesc:    { fontSize: Layout.fontSize.xs, color: Colors.textMuted, lineHeight: 16 },
-  perkCheck:   { fontSize: Layout.fontSize.base, color: Colors.success, fontWeight: '700' },
-  legal:       { fontSize: Layout.fontSize.xs, color: Colors.textMuted, textAlign: 'center', lineHeight: 18 },
+  iconBtnText: {
+    color: Colors.textPrimary,
+    fontSize: 16,
+  },
 
+  scroll: {
+    padding: Layout.spacing.lg,
+    gap: Layout.spacing.md,
+    paddingBottom: Layout.spacing.xxxl,
+  },
+
+  // Headline
+  headline: {
+    gap: 8,
+    paddingVertical: Layout.spacing.lg,
+  },
+  headlineTitle: {
+    fontSize: Layout.fontSize.xxxl,
+    color: Colors.textPrimary,
+    letterSpacing: Layout.letterSpacing.tight,
+    fontWeight: '600',
+    lineHeight: 40,
+  },
+  headlineSub: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textMuted,
+    letterSpacing: Layout.letterSpacing.wider,
+  },
+
+  // Price card
+  priceCard: {
+    borderWidth: 1,
+    borderColor: Colors.borderCard,
+    borderRadius: Layout.borderRadius.card,
+    padding: Layout.spacing.xl,
+    alignItems: 'center',
+    gap: 6,
+  },
+  priceAmount: {
+    fontSize: 48,
+    color: Colors.textPrimary,
+    letterSpacing: -1,
+    fontWeight: '300',
+  },
+  pricePeriod: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textMuted,
+    letterSpacing: Layout.letterSpacing.wider,
+  },
+  priceNote: {
+    fontSize: 9,
+    color: Colors.textMuted,
+    letterSpacing: Layout.letterSpacing.tight,
+    marginTop: 4,
+  },
+
+  // Notice banner
+  noticeBanner: {
+    borderWidth: 1,
+    borderColor: Colors.borderCard,
+    borderRadius: Layout.borderRadius.md,
+    padding: Layout.spacing.md,
+  },
+  noticeText: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textSecondary,
+    letterSpacing: Layout.letterSpacing.tight,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
+
+  // Benefit cards
+  benefitCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Layout.spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.borderCard,
+    borderRadius: Layout.borderRadius.card,
+    padding: Layout.spacing.lg,
+  },
+  benefitIcon: { fontSize: 24, width: 32, textAlign: 'center' },
+  benefitContent: { flex: 1, gap: 4 },
+  benefitLabel: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textPrimary,
+    letterSpacing: Layout.letterSpacing.wider,
+    fontWeight: '600',
+  },
+  benefitDesc: {
+    fontSize: 9,
+    color: Colors.textMuted,
+    letterSpacing: Layout.letterSpacing.tight,
+  },
+
+  // Buttons
+  btnPrimary: {
+    paddingVertical: 18,
+    borderRadius: Layout.borderRadius.full,
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+    marginTop: Layout.spacing.xs,
+  },
+  btnPrimaryText: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.background,
+    letterSpacing: Layout.letterSpacing.wider,
+    fontWeight: '700',
+  },
+  btnOutline: {
+    paddingVertical: 18,
+    borderRadius: Layout.borderRadius.full,
+    borderWidth: 1,
+    borderColor: Colors.borderCardStrong,
+    alignItems: 'center',
+  },
+  btnOutlineText: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textPrimary,
+    letterSpacing: Layout.letterSpacing.wider,
+    fontWeight: '600',
+  },
+  btnGhost: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  btnGhostText: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textMuted,
+    letterSpacing: Layout.letterSpacing.wider,
+  },
+  btnDisabled: { opacity: 0.6 },
+
+  legal: {
+    fontSize: 9,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    letterSpacing: Layout.letterSpacing.tight,
+    lineHeight: 14,
+  },
+
+  // Already premium
   alreadyContainer: {
     flex: 1,
     padding: Layout.spacing.xl,
     justifyContent: 'center',
     gap: Layout.spacing.md,
   },
-  crownIcon:    { fontSize: 56, textAlign: 'center' },
-  alreadyTitle: { fontSize: Layout.fontSize.xxl, color: Colors.textPrimary, fontWeight: '800', textAlign: 'center' },
-  alreadyText:  { fontSize: Layout.fontSize.base, color: Colors.textSecondary, textAlign: 'center', lineHeight: 24 },
+  closeBtn: {
+    alignSelf: 'flex-end',
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.borderCard,
+    borderRadius: 4,
+    margin: Layout.spacing.lg,
+    marginBottom: 0,
+  },
+  closeBtnText: { color: Colors.textPrimary, fontSize: 16 },
+  alreadyTitle: {
+    fontSize: Layout.fontSize.xl,
+    color: Colors.textPrimary,
+    letterSpacing: Layout.letterSpacing.wider,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  alreadySub: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textMuted,
+    letterSpacing: Layout.letterSpacing.tight,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
 });

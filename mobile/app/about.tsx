@@ -1,97 +1,162 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
+  Image,
 } from 'react-native';
-import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 import { Layout } from '@/constants/layout';
+import { ScreenHeader } from '@/components/navigation/ScreenHeader';
+import { NavigationDrawer } from '@/components/navigation/NavigationDrawer';
 
-const RESTAURANT_ADDRESS = process.env.EXPO_PUBLIC_RESTAURANT_ADDRESS ?? '';
-const RESTAURANT_PHONE   = process.env.EXPO_PUBLIC_RESTAURANT_PHONE   ?? '';
-const RESTAURANT_EMAIL   = process.env.EXPO_PUBLIC_RESTAURANT_EMAIL   ?? '';
+const ADDRESS = process.env.EXPO_PUBLIC_RESTAURANT_ADDRESS ?? '';
+const PHONE   = process.env.EXPO_PUBLIC_RESTAURANT_PHONE   ?? '';
+const EMAIL   = process.env.EXPO_PUBLIC_RESTAURANT_EMAIL   ?? '';
+
+const PILLARS = [
+  {
+    title: 'PREMIUM QUALITY',
+    desc: 'EVERY INGREDIENT SOURCED WITH CARE. EVERY DISH CRAFTED WITH INTENTION.',
+  },
+  {
+    title: 'COMMUNITY',
+    desc: 'A GATHERING PLACE FOR THOSE WHO APPRECIATE THE FINER THINGS IN LIFE.',
+  },
+  {
+    title: 'HOSPITALITY',
+    desc: 'SERVICE THAT FEELS PERSONAL, WARM, AND EFFORTLESSLY REFINED.',
+  },
+];
 
 export default function AboutScreen() {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <View style={styles.container}>
+      <ScreenHeader title="OUR STORY" onMenuPress={() => setDrawerOpen(true)} />
+
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-
-        <View style={styles.header}>
-          <Text style={styles.tagline}>ABOUT US</Text>
-          <Text style={styles.title}>Our Story</Text>
+        {/* Story image */}
+        <View style={styles.imageCard}>
+          <Image
+            source={require('../assets/images/story.png')}
+            style={styles.storyImage}
+            resizeMode="cover"
+          />
         </View>
 
-        <View style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerStar}>✦</Text>
-          <View style={styles.dividerLine} />
+        {/* Our Story */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>OUR STORY</Text>
+          <Text style={styles.cardText}>
+            CAFÉ LOCCO BEGAN AS A VISION — A PLACE WHERE PREMIUM COFFEE AND ELEVATED
+            HOSPITALITY MEET. BORN FROM A PASSION FOR CRAFT AND COMMUNITY, WE SET OUT
+            TO CREATE MORE THAN A CAFÉ: A DESTINATION FOR THOSE WHO SEEK SOMETHING REFINED.
+          </Text>
         </View>
 
-        {(RESTAURANT_ADDRESS || RESTAURANT_PHONE || RESTAURANT_EMAIL) ? (
-          <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>Find Us</Text>
-            {RESTAURANT_ADDRESS ? (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoIcon}>📍</Text>
-                <Text style={styles.infoText}>{RESTAURANT_ADDRESS}</Text>
-              </View>
-            ) : null}
-            {RESTAURANT_PHONE ? (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoIcon}>📞</Text>
-                <Text style={styles.infoText}>{RESTAURANT_PHONE}</Text>
-              </View>
-            ) : null}
-            {RESTAURANT_EMAIL ? (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoIcon}>✉️</Text>
-                <Text style={styles.infoText}>{RESTAURANT_EMAIL}</Text>
-              </View>
-            ) : null}
+        {/* Mission */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>OUR MISSION</Text>
+          <Text style={styles.cardText}>
+            TO DELIVER AN UNCOMPROMISING EXPERIENCE — FROM THE FIRST SIP OF YOUR MORNING
+            COFFEE TO THE LAST BITE OF YOUR EVENING MEAL. EVERY DETAIL IS CONSIDERED.
+            EVERY VISIT IS AN OCCASION.
+          </Text>
+        </View>
+
+        {/* Vision */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>OUR VISION</Text>
+          <Text style={styles.cardText}>
+            TO BECOME THE DEFINING PREMIUM CAFÉ EXPERIENCE — A PLACE SYNONYMOUS WITH QUALITY,
+            WARMTH, AND BELONGING. WHERE EVERY GUEST FEELS LIKE A MEMBER OF SOMETHING SPECIAL.
+          </Text>
+        </View>
+
+        {/* Pillars */}
+        {PILLARS.map((p) => (
+          <View key={p.title} style={styles.pillarCard}>
+            <Text style={styles.pillarTitle}>{p.title}</Text>
+            <Text style={styles.pillarDesc}>{p.desc}</Text>
+          </View>
+        ))}
+
+        {/* Location card */}
+        {(ADDRESS || PHONE || EMAIL) ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>FIND US</Text>
+            {ADDRESS ? <Text style={styles.cardText}>📍  {ADDRESS}</Text> : null}
+            {PHONE   ? <Text style={styles.cardText}>📞  {PHONE}</Text>   : null}
+            {EMAIL   ? <Text style={styles.cardText}>✉️  {EMAIL}</Text>   : null}
           </View>
         ) : null}
       </ScrollView>
-    </SafeAreaView>
+
+      <NavigationDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: Colors.background },
-  scroll: { padding: Layout.spacing.lg, gap: Layout.spacing.lg, paddingBottom: Layout.spacing.xxxl },
-
-  backBtn:  { alignSelf: 'flex-start', marginBottom: Layout.spacing.sm },
-  backText: { color: Colors.textSecondary, fontSize: Layout.fontSize.sm },
-
-  header:  { gap: 4 },
-  tagline: { fontSize: Layout.fontSize.xs, color: Colors.gold, letterSpacing: 3, fontWeight: '700' },
-  title:   { fontSize: Layout.fontSize.xxxl, color: Colors.textPrimary, fontWeight: '800', letterSpacing: -0.5 },
-
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Layout.spacing.sm,
-    marginVertical: Layout.spacing.sm,
-  },
-  dividerLine: { flex: 1, height: 1, backgroundColor: Colors.border },
-  dividerStar: { color: Colors.gold, fontSize: 12 },
-
-  infoCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: Layout.borderRadius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
+  container: { flex: 1, backgroundColor: Colors.background },
+  scroll: {
     padding: Layout.spacing.lg,
-    gap: Layout.spacing.sm,
+    gap: Layout.spacing.md,
+    paddingBottom: Layout.spacing.xxxl,
   },
-  infoTitle: { fontSize: Layout.fontSize.base, color: Colors.textPrimary, fontWeight: '700', marginBottom: Layout.spacing.xs },
-  infoRow:   { flexDirection: 'row', gap: Layout.spacing.sm, alignItems: 'flex-start' },
-  infoIcon:  { fontSize: 14, marginTop: 1 },
-  infoText:  { flex: 1, fontSize: Layout.fontSize.sm, color: Colors.textSecondary, lineHeight: 20 },
+
+  imageCard: {
+    borderWidth: 1,
+    borderColor: Colors.borderCard,
+    borderRadius: Layout.borderRadius.card,
+    overflow: 'hidden',
+    height: 220,
+  },
+  storyImage: {
+    width: '100%',
+    height: '100%',
+  },
+
+  card: {
+    borderWidth: 1,
+    borderColor: Colors.borderCard,
+    borderRadius: Layout.borderRadius.card,
+    padding: Layout.spacing.lg,
+    gap: 12,
+  },
+  cardTitle: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textPrimary,
+    letterSpacing: Layout.letterSpacing.wider,
+    fontWeight: '700',
+  },
+  cardText: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textSecondary,
+    letterSpacing: Layout.letterSpacing.tight,
+    lineHeight: 18,
+  },
+
+  pillarCard: {
+    borderWidth: 1,
+    borderColor: Colors.borderCard,
+    borderRadius: Layout.borderRadius.card,
+    padding: Layout.spacing.lg,
+    gap: 10,
+  },
+  pillarTitle: {
+    fontSize: Layout.fontSize.sm,
+    color: Colors.textPrimary,
+    letterSpacing: Layout.letterSpacing.wider,
+    fontWeight: '700',
+  },
+  pillarDesc: {
+    fontSize: Layout.fontSize.xs,
+    color: Colors.textMuted,
+    letterSpacing: Layout.letterSpacing.tight,
+    lineHeight: 16,
+  },
 });
