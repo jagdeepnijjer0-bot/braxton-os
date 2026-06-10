@@ -7,6 +7,9 @@ export interface MenuItem {
   image_url: string | null;
   is_available: boolean;
   is_featured: boolean;
+  is_vegetarian: boolean;
+  is_vegan: boolean;
+  is_gluten_free: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -94,7 +97,15 @@ export interface UserProfile {
 export type MenuCategory =
   | 'all'
   | 'breakfast'
-  | 'classics'
-  | 'drinks'
-  | 'desserts'
-  | string; // fallback for any future categories added in Supabase without a code change
+  | 'starters'
+  | 'kids'
+  | 'burgers'
+  | 'favourites'
+  | 'sides'
+  | 'street-bowls'
+  | 'sweet-plates'
+  | 'soft-drinks'
+  | 'mocktails'
+  | 'brew-bar'
+  | 'indulgence-bar'
+  | string; // fallback for categories added in Supabase without a code change

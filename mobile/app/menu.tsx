@@ -15,6 +15,22 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useMenu } from '@/hooks/useMenu';
 import { MenuItem } from '@/lib/types';
 
+const CATEGORY_LABELS: Record<string, string> = {
+  all:              'ALL',
+  breakfast:        'BREAKFAST',
+  starters:         'STARTERS',
+  kids:             'KIDS',
+  burgers:          'BURGERS',
+  favourites:       'FAVOURITES',
+  sides:            'SIDES',
+  'street-bowls':   'STREET BOWLS',
+  'sweet-plates':   'SWEET PLATES',
+  'soft-drinks':    'SOFT DRINKS',
+  mocktails:        'MOCKTAILS',
+  'brew-bar':       'BREW BAR',
+  'indulgence-bar': 'INDULGENCE BAR',
+};
+
 export default function MenuScreen() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { filtered, categories, activeCategory, setActiveCategory, loading, error, refetch } =
@@ -39,7 +55,7 @@ export default function MenuScreen() {
             activeOpacity={0.7}
           >
             <Text style={[styles.tabText, activeCategory === cat && styles.tabTextActive]}>
-              {cat.toUpperCase()}
+              {CATEGORY_LABELS[cat] ?? cat.replace(/-/g, ' ').toUpperCase()}
             </Text>
           </TouchableOpacity>
         ))}
@@ -76,12 +92,32 @@ export default function MenuScreen() {
 }
 
 function MenuItemRow({ item }: { item: MenuItem }) {
+  const hasBadge = item.is_vegetarian || item.is_vegan || item.is_gluten_free;
   return (
     <View style={styles.menuItem}>
       <View style={styles.menuItemTop}>
         <Text style={styles.menuItemName}>{item.name.toUpperCase()}</Text>
         <Text style={styles.menuItemPrice}>£{item.price.toFixed(2)}</Text>
       </View>
+      {hasBadge && (
+        <View style={styles.badgeRow}>
+          {item.is_vegan && (
+            <View style={[styles.dietBadge, styles.dietBadgeGreen]}>
+              <Text style={[styles.dietBadgeText, styles.dietBadgeTextGreen]}>V</Text>
+            </View>
+          )}
+          {item.is_vegetarian && !item.is_vegan && (
+            <View style={[styles.dietBadge, styles.dietBadgeGreen]}>
+              <Text style={[styles.dietBadgeText, styles.dietBadgeTextGreen]}>VEG</Text>
+            </View>
+          )}
+          {item.is_gluten_free && (
+            <View style={[styles.dietBadge, styles.dietBadgeBlue]}>
+              <Text style={[styles.dietBadgeText, styles.dietBadgeTextBlue]}>GF</Text>
+            </View>
+          )}
+        </View>
+      )}
       {item.description ? (
         <Text style={styles.menuItemDesc} numberOfLines={2}>
           {item.description.toUpperCase()}
@@ -164,6 +200,38 @@ const styles = StyleSheet.create({
     letterSpacing: Layout.letterSpacing.tight,
     lineHeight: 16,
   },
+
+  badgeRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 4,
+  },
+  dietBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 99,
+    borderWidth: 1,
+  },
+  dietBadgeGreen: {
+    backgroundColor: 'rgba(76,175,132,0.12)',
+    borderColor: 'rgba(76,175,132,0.35)',
+  },
+  dietBadgeBlue: {
+    backgroundColor: 'rgba(85,153,224,0.12)',
+    borderColor: 'rgba(85,153,224,0.35)',
+  },
+  dietBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  dietBadgeTextGreen: {
+    color: Colors.success,
+  },
+  dietBadgeTextBlue: {
+    color: Colors.info,
+  },
+
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
   errorText: {
     fontSize: Layout.fontSize.xs,
