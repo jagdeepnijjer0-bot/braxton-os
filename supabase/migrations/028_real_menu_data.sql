@@ -1,0 +1,7 @@
+-- ============================================================
+-- Migration 028 — SUPERSEDED
+-- This file has been replaced by:
+--   029_menu_dietary_badges.sql  (schema: add is_vegetarian/is_vegan/is_gluten_free)
+--   030_menu_full_pdf.sql        (full authoritative menu data from live PDF + screenshots)
+-- DO NOT RUN THIS MIGRATION.
+-- ============================================================
